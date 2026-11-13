@@ -113,7 +113,7 @@
           <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
         </div>
 
-        <!-- MODO RANGO PERSONALIZADO -->
+		<!-- MODO RANGO PERSONALIZADO CON BOTONES RÁPIDOS -->
         <div id="customControls" class="hidden flex flex-wrap items-center gap-2 text-xs">
           <div class="flex items-center gap-1">
             <label for="customStartDate" class="text-slate-500 font-medium">Desde:</label>
@@ -124,8 +124,15 @@
             <input type="date" id="customEndDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
           </div>
           <button id="btnApplyCustomRange" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
-            Filtrar Rango
+            Filtrar
           </button>
+
+          <!-- Botones de Rango Rápido -->
+          <div class="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <button id="btnPreset3M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 3M</button>
+            <button id="btnPreset6M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 6M</button>
+            <button id="btnPresetYTD" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Este Año (YTD)</button>
+          </div>
         </div>
 
       </div>
@@ -372,6 +379,43 @@
 
     document.getElementById("btnApplyCustomRange").onclick = function() { refreshAll(); };
 
+	// --- LÓGICA DE BOTONES PREDEFINIDOS ---
+    function applyPresetRange(start, end) {
+      document.getElementById("customStartDate").value = start.toISOString().split("T")[0];
+      document.getElementById("customEndDate").value = end.toISOString().split("T")[0];
+      refreshAll();
+    }
+
+    document.getElementById("btnPreset3M").onclick = function() {
+      var now = new Date();
+      var start = new Date();
+      start.setMonth(now.getMonth() - 3);
+      applyPresetRange(start, now);
+    };
+
+    document.getElementById("btnPreset6M").onclick = function() {
+      var now = new Date();
+      var start = new Date();
+      start.setMonth(now.getMonth() - 6);
+      applyPresetRange(start, now);
+    };
+
+    document.getElementById("btnPresetYTD").onclick = function() {
+      var now = new Date();
+      var start = new Date(now.getFullYear(), 0, 1); // 1 de Enero del año actual
+      applyPresetRange(start, now);
+    };
+
+    // --- CERRAR MODAL Y MENÚ CON LA TECLA ESC ---
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        closeDetailModal();
+        if (monthDropdownMenu) {
+          monthDropdownMenu.classList.add("hidden");
+        }
+      }
+    });
+	
     // Menú flotante de meses
     var btnMonthDropdownToggle = document.getElementById("btnMonthDropdownToggle");
     var monthDropdownMenu = document.getElementById("monthDropdownMenu");
