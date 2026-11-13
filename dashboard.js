@@ -19,7 +19,7 @@
   }
 
   if (!accessToken) {
-    alert("⚠️ No se detectó una sesión activa en Treinta. Por favor inicia sesión primero en web.treinta.co.");
+    alert("⚠️ No se detectó sesión activa en Treinta. Inicia sesión en web.treinta.co primero.");
     return;
   }
 
@@ -48,7 +48,6 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-  <!-- CAPTURADOR DE ERRORES VISIBLE -->
   <script>
     window.onerror = function(msg, url, line) {
       alert("⚠️ Error en Dashboard: " + msg + " (Línea: " + line + ")");
@@ -250,30 +249,30 @@
   </div>
 
   <script>
-    let token = ${JSON.stringify(accessToken)};
-    let refreshToken = ${JSON.stringify(refreshToken)};
-    let storeId = ${JSON.stringify(storeId)};
+    var token = ${JSON.stringify(accessToken)};
+    var refreshToken = ${JSON.stringify(refreshToken)};
+    var storeId = ${JSON.stringify(storeId)};
 
-    let dateFilterMode = "monthly";
-    let selectedMonthDate = new Date();
+    var dateFilterMode = "monthly";
+    var selectedMonthDate = new Date();
 
-    let activeTab = "clients";
-    let allClients = [];
-    let allGlobalProducts = [];
-    let currentCustomerProducts = [];
-    let nextProductCursor = null;
-    let isLoadingProducts = false;
-    let hasMoreProducts = true;
-    let profitPeriodsCache = [];
-    let salesPeriodsCache = [];
+    var activeTab = "clients";
+    var allClients = [];
+    var allGlobalProducts = [];
+    var currentCustomerProducts = [];
+    var nextProductCursor = null;
+    var isLoadingProducts = false;
+    var hasMoreProducts = true;
+    var profitPeriodsCache = [];
+    var salesPeriodsCache = [];
 
-    let chartClientsInstance = null;
-    let chartProductsInstance = null;
-    let chartExecProfitInstance = null;
-    let chartExecSalesInstance = null;
+    var chartClientsInstance = null;
+    var chartProductsInstance = null;
+    var chartExecProfitInstance = null;
+    var chartExecSalesInstance = null;
 
-    const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
-    const numberFormatter = new Intl.NumberFormat('es-AR');
+    var currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
+    var numberFormatter = new Intl.NumberFormat('es-AR');
 
     // Botón Salir
     document.getElementById("btnCloseDashboard").onclick = function() {
@@ -292,31 +291,31 @@
     }
 
     function getArgentinaEndISO(dateStr) {
-      const parts = dateStr.split("-").map(Number);
-      const nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
-      const nextDayStr = nextDay.toISOString().split("T")[0];
+      var parts = dateStr.split("-").map(Number);
+      var nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
+      var nextDayStr = nextDay.toISOString().split("T")[0];
       return nextDayStr + "T02:59:59.999Z";
     }
 
     function getDateQueryParams() {
-      const tz = encodeURIComponent("America/Buenos_Aires");
+      var tz = encodeURIComponent("America/Buenos_Aires");
       if (dateFilterMode === "custom") {
-        const start = document.getElementById("customStartDate").value;
-        const end = document.getElementById("customEndDate").value;
-        return \`timeUnit=custom&startDate=\${getArgentinaStartISO(start)}&endDate=\${getArgentinaEndISO(end)}&timeZone=\${tz}\`;
+        var start = document.getElementById("customStartDate").value;
+        var end = document.getElementById("customEndDate").value;
+        return "timeUnit=custom&startDate=" + getArgentinaStartISO(start) + "&endDate=" + getArgentinaEndISO(end) + "&timeZone=" + tz;
       } else {
-        const y = selectedMonthDate.getFullYear();
-        const m = selectedMonthDate.getMonth() + 1;
-        const firstDayStr = \`\${y}-\${m < 10 ? '0' + m : m}-01\`;
-        return \`timeUnit=monthly&startDate=\${getArgentinaStartISO(firstDayStr)}&timeZone=\${tz}\`;
+        var y = selectedMonthDate.getFullYear();
+        var m = selectedMonthDate.getMonth() + 1;
+        var firstDayStr = y + "-" + (m < 10 ? "0" + m : m) + "-01";
+        return "timeUnit=monthly&startDate=" + getArgentinaStartISO(firstDayStr) + "&timeZone=" + tz;
       }
     }
 
     // Selector de Modo
-    const modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
-    const modeCustomBtn = document.getElementById("modeCustomBtn");
-    const monthlyControls = document.getElementById("monthlyControls");
-    const customControls = document.getElementById("customControls");
+    var modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
+    var modeCustomBtn = document.getElementById("modeCustomBtn");
+    var monthlyControls = document.getElementById("monthlyControls");
+    var customControls = document.getElementById("customControls");
 
     modeMonthlyBtn.onclick = function() {
       dateFilterMode = "monthly";
@@ -338,10 +337,10 @@
     };
 
     function initDateInputs() {
-      const now = new Date();
+      var now = new Date();
       selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      const sevenDaysAgo = new Date();
+      var sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(now.getDate() - 7);
       document.getElementById("customStartDate").value = sevenDaysAgo.toISOString().split("T")[0];
       document.getElementById("customEndDate").value = now.toISOString().split("T")[0];
@@ -350,8 +349,8 @@
     }
 
     function syncPresetButtonStyles() {
-      const now = new Date();
-      const currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      var now = new Date();
+      var currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
       document.getElementById("lblCurrentPeriod").textContent = selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
       document.getElementById("btnNextMonthStep").disabled = selectedMonthDate >= currentMonthDate;
     }
@@ -365,7 +364,7 @@
     document.getElementById("btnPrevMonthStep").onclick = function() { stepMonth(-1); };
     document.getElementById("btnNextMonthStep").onclick = function() { stepMonth(1); };
     document.getElementById("btnCurrentMonth").onclick = function() {
-      const now = new Date();
+      var now = new Date();
       selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
       syncPresetButtonStyles();
       refreshAll();
@@ -374,52 +373,54 @@
     document.getElementById("btnApplyCustomRange").onclick = function() { refreshAll(); };
 
     // Menú flotante de meses
-    const btnMonthDropdownToggle = document.getElementById("btnMonthDropdownToggle");
-    const monthDropdownMenu = document.getElementById("monthDropdownMenu");
-    const monthDropdownList = document.getElementById("monthDropdownList");
+    var btnMonthDropdownToggle = document.getElementById("btnMonthDropdownToggle");
+    var monthDropdownMenu = document.getElementById("monthDropdownMenu");
+    var monthDropdownList = document.getElementById("monthDropdownList");
 
     function renderMonthDropdownOptions() {
       monthDropdownList.innerHTML = "";
-      const now = new Date();
-      const realCurrentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      var now = new Date();
+      var realCurrentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      for (let offset = -6; offset <= 6; offset++) {
-        const optionDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + offset, 1);
-        const isCurrentSelected = optionDate.getTime() === selectedMonthDate.getTime();
-        const isFuture = optionDate > realCurrentMonthDate;
+      for (var offset = -6; offset <= 6; offset++) {
+        (function(off) {
+          var optionDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + off, 1);
+          var isCurrentSelected = optionDate.getTime() === selectedMonthDate.getTime();
+          var isFuture = optionDate > realCurrentMonthDate;
 
-        const btn = document.createElement("button");
-        btn.type = "button";
-        let label = optionDate.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }).replace('.', '');
-        label = label.charAt(0).toUpperCase() + label.slice(1);
+          var btn = document.createElement("button");
+          btn.type = "button";
+          var label = optionDate.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }).replace('.', '');
+          label = label.charAt(0).toUpperCase() + label.slice(1);
 
-        if (isCurrentSelected) {
-          btn.className = "px-2 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm";
-          btn.textContent = "✓ " + label;
-        } else if (isFuture) {
-          btn.className = "px-2 py-1.5 text-xs text-slate-300 cursor-not-allowed rounded-lg text-left";
-          btn.textContent = label;
-          btn.disabled = true;
-        } else {
-          btn.className = "px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-left transition";
-          btn.textContent = label;
-        }
+          if (isCurrentSelected) {
+            btn.className = "px-2 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm";
+            btn.textContent = "✓ " + label;
+          } else if (isFuture) {
+            btn.className = "px-2 py-1.5 text-xs text-slate-300 cursor-not-allowed rounded-lg text-left";
+            btn.textContent = label;
+            btn.disabled = true;
+          } else {
+            btn.className = "px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-left transition";
+            btn.textContent = label;
+          }
 
-        btn.onclick = function() {
-          if (isFuture || isCurrentSelected) return;
-          selectedMonthDate = optionDate;
-          monthDropdownMenu.classList.add("hidden");
-          syncPresetButtonStyles();
-          refreshAll();
-        };
+          btn.onclick = function() {
+            if (isFuture || isCurrentSelected) return;
+            selectedMonthDate = optionDate;
+            monthDropdownMenu.classList.add("hidden");
+            syncPresetButtonStyles();
+            refreshAll();
+          };
 
-        monthDropdownList.appendChild(btn);
+          monthDropdownList.appendChild(btn);
+        })(offset);
       }
     }
 
     btnMonthDropdownToggle.onclick = function(e) {
       e.stopPropagation();
-      const isHidden = monthDropdownMenu.classList.contains("hidden");
+      var isHidden = monthDropdownMenu.classList.contains("hidden");
       if (isHidden) {
         renderMonthDropdownOptions();
         monthDropdownMenu.classList.remove("hidden");
@@ -436,7 +437,7 @@
 
     function selectMonthFromChart(iso) {
       if (dateFilterMode === "custom") return;
-      const d = new Date(iso);
+      var d = new Date(iso);
       selectedMonthDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
       syncPresetButtonStyles();
       refreshAll();
@@ -465,12 +466,10 @@
 
     // Consultas
     async function fetchExecutiveSummary() {
-      const q = getDateQueryParams();
+      var q = getDateQueryParams();
       try {
-        const [rp, rs] = await Promise.all([
-          fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/profit?\${q}\`, { headers: getHeaders() }),
-          fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/sales?\${q}\`, { headers: getHeaders() })
-        ]);
+        var rp = await fetch("https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/profit?" + q, { headers: getHeaders() });
+        var rs = await fetch("https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/sales?" + q, { headers: getHeaders() });
         if (rp.ok) renderExecutiveProfit(await rp.json());
         if (rs.ok) renderExecutiveSales(await rs.json());
       } catch(err) {
@@ -478,104 +477,54 @@
       }
     }
 
-	function renderExecutiveProfit(data) {
+    function renderExecutiveProfit(data) {
       document.getElementById("execProfitValue").textContent = currencyFormatter.format(data.totalProfit || 0);
       document.getElementById("execProfitVendiste").textContent = currencyFormatter.format(data.totalSales || 0);
       document.getElementById("execProfitCosto").textContent = currencyFormatter.format(data.totalCost || 0);
       document.getElementById("execProfitMargen").textContent = (data.marginPercentage || 0).toFixed(2) + "%";
-      const tr = data.trendPercentage || 0;
+      var tr = data.trendPercentage || 0;
       document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
       profitPeriodsCache = data.periods || [];
-      
-      // Formatear etiquetas: si es rango personalizado muestra Día + Mes (ej: 01 oct, 15 oct)
-      const labels = profitPeriodsCache.map(p => {
-        const d = new Date(p.periodStart);
+
+      var labels = profitPeriodsCache.map(function(p) {
+        var d = new Date(p.periodStart);
         if (dateFilterMode === "custom" || p.granularity === "day") {
           return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '');
         }
         return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
       });
 
-      const colors = profitPeriodsCache.map((p, idx) => idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
+      var colors = profitPeriodsCache.map(function(p, idx) {
+        return idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0";
+      });
 
-      const ctx = document.getElementById("chartExecProfit").getContext("2d");
+      var ctx = document.getElementById("chartExecProfit").getContext("2d");
       if (chartExecProfitInstance) chartExecProfitInstance.destroy();
       chartExecProfitInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets: [{ data: profitPeriodsCache.map(p => p.totalProfit || 0), backgroundColor: colors, borderRadius: 3 }] },
+        data: { labels: labels, datasets: [{ data: profitPeriodsCache.map(function(p){ return p.totalProfit || 0; }), backgroundColor: colors, borderRadius: 3 }] },
         options: {
-          responsive: true, maintainAspectRatio: false,
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
             tooltip: {
               callbacks: {
-                title: (items) => {
-                  const p = profitPeriodsCache[items[0].dataIndex];
-                  const d = new Date(p.periodStart);
+                title: function(items) {
+                  var p = profitPeriodsCache[items[0].dataIndex];
+                  var d = new Date(p.periodStart);
                   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
                 },
-                label: (c) => ` Ganancia: ${currencyFormatter.format(c.raw)}`
+                label: function(c) {
+                  return " Ganancia: " + currencyFormatter.format(c.raw);
+                }
               }
             }
           },
-          onClick: (e, els) => els.length && selectMonthFromChart(profitPeriodsCache[els[0].index].periodStart),
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 8, // Máximo 8 fechas distribuidas para que se lean limpias
-                font: { size: 9, weight: 'bold' },
-                color: '#64748b'
-              }
-            },
-            y: { display: false }
-          }
-        }
-      });
-    }
-
-    function renderExecutiveSales(data) {
-      document.getElementById("execSalesValue").textContent = currencyFormatter.format(data.totalSales || 0);
-      document.getElementById("execSalesTotalUnits").textContent = numberFormatter.format(data.totalSold || 0);
-      document.getElementById("execSalesAvgTicket").textContent = currencyFormatter.format(data.averageBySale || 0);
-      const tr = data.trendPercentage || 0;
-      document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
-
-      salesPeriodsCache = data.periods || [];
-      
-      const labels = salesPeriodsCache.map(p => {
-        const d = new Date(p.periodStart);
-        if (dateFilterMode === "custom" || p.granularity === "day") {
-          return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '');
-        }
-        return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
-      });
-
-      const colors = salesPeriodsCache.map((p, idx) => idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
-
-      const ctx = document.getElementById("chartExecSales").getContext("2d");
-      if (chartExecSalesInstance) chartExecSalesInstance.destroy();
-      chartExecSalesInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets: [{ data: salesPeriodsCache.map(p => p.salesAmount || p.value || 0), backgroundColor: colors, borderRadius: 3 }] },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items) => {
-                  const p = salesPeriodsCache[items[0].dataIndex];
-                  const d = new Date(p.periodStart);
-                  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
-                },
-                label: (c) => ` Ventas: ${currencyFormatter.format(c.raw)}`
-              }
-            }
+          onClick: function(e, els) {
+            if (els.length) selectMonthFromChart(profitPeriodsCache[els[0].index].periodStart);
           },
-          onClick: (e, els) => els.length && selectMonthFromChart(salesPeriodsCache[els[0].index].periodStart),
           scales: {
             x: {
               grid: { display: false },
@@ -592,15 +541,77 @@
       });
     }
 
+    function renderExecutiveSales(data) {
+      document.getElementById("execSalesValue").textContent = currencyFormatter.format(data.totalSales || 0);
+      document.getElementById("execSalesTotalUnits").textContent = numberFormatter.format(data.totalSold || 0);
+      document.getElementById("execSalesAvgTicket").textContent = currencyFormatter.format(data.averageBySale || 0);
+      var tr = data.trendPercentage || 0;
+      document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
+
+      salesPeriodsCache = data.periods || [];
+
+      var labels = salesPeriodsCache.map(function(p) {
+        var d = new Date(p.periodStart);
+        if (dateFilterMode === "custom" || p.granularity === "day") {
+          return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '');
+        }
+        return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
+      });
+
+      var colors = salesPeriodsCache.map(function(p, idx) {
+        return idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0";
+      });
+
+      var ctx = document.getElementById("chartExecSales").getContext("2d");
+      if (chartExecSalesInstance) chartExecSalesInstance.destroy();
+      chartExecSalesInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: salesPeriodsCache.map(function(p){ return p.salesAmount || p.value || 0; }), backgroundColor: colors, borderRadius: 3 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  var p = salesPeriodsCache[items[0].dataIndex];
+                  var d = new Date(p.periodStart);
+                  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+                },
+                label: function(c) {
+                  return " Ventas: " + currencyFormatter.format(c.raw);
+                }
+              }
+            }
+          },
+          onClick: function(e, els) {
+            if (els.length) selectMonthFromChart(salesPeriodsCache[els[0].index].periodStart);
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 8,
+                font: { size: 9, weight: 'bold' },
+                color: '#64748b'
+              }
+            },
+            y: { display: false }
+          }
+        }
+      });
+    }
 
     async function fetchClientsData() {
-      const q = getDateQueryParams();
+      var q = getDateQueryParams();
       try {
-        const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/customers?\${q}\`, { headers: getHeaders() });
+        var res = await fetch("https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/customers?" + q, { headers: getHeaders() });
         if (res.ok) {
-          const d = await res.json();
-          allClients = (d.items || []).filter(i => (i.salesAmount || i.amount) > 0);
-          allClients.sort((a, b) => (b.salesAmount || b.amount) - (a.salesAmount || a.amount));
+          var d = await res.json();
+          allClients = (d.items || []).filter(function(i) { return (i.salesAmount || i.amount) > 0; });
+          allClients.sort(function(a, b) { return (b.salesAmount || b.amount) - (a.salesAmount || a.amount); });
           renderClientsKPIs(allClients);
           renderClientsChart(allClients.slice(0, 10));
           renderClientsTable(allClients);
@@ -611,8 +622,8 @@
     }
 
     function renderClientsKPIs(items) {
-      let t = 0, c = 0;
-      items.forEach(i => { t += (i.salesAmount || i.amount || 0); c += (i.salesCount || 0); });
+      var t = 0, c = 0;
+      items.forEach(function(i) { t += (i.salesAmount || i.amount || 0); c += (i.salesCount || 0); });
       document.getElementById("kpiTotalSales").textContent = currencyFormatter.format(t);
       document.getElementById("kpiActiveClients").textContent = numberFormatter.format(items.length);
       document.getElementById("kpiTotalOrders").textContent = numberFormatter.format(c);
@@ -620,27 +631,27 @@
     }
 
     function renderClientsChart(items) {
-      const ctx = document.getElementById("topClientsChart").getContext("2d");
+      var ctx = document.getElementById("topClientsChart").getContext("2d");
       if (chartClientsInstance) chartClientsInstance.destroy();
       chartClientsInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: items.map(i => i.name.trim()), datasets: [{ data: items.map(i => i.salesAmount || i.amount || 0), backgroundColor: 'rgba(99, 102, 241, 0.85)', borderRadius: 6 }] },
+        data: { labels: items.map(function(i){ return i.name.trim(); }), datasets: [{ data: items.map(function(i){ return i.salesAmount || i.amount || 0; }), backgroundColor: 'rgba(99, 102, 241, 0.85)', borderRadius: 6 }] },
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { display: false } } } }
       });
     }
 
     function renderClientsTable(items) {
-      const body = document.getElementById("clientsTableBody");
+      var body = document.getElementById("clientsTableBody");
       body.innerHTML = "";
-      document.getElementById("tableRecordCount").textContent = \`Mostrando \${items.length} clientes\`;
-      const tot = allClients.reduce((a, b) => a + (b.salesAmount || b.amount || 0), 0);
-      items.forEach((item, idx) => {
-        const amt = item.salesAmount || item.amount || 0;
-        const cnt = item.salesCount || 0;
-        const pct = tot > 0 ? ((amt / tot) * 100).toFixed(1) : 0;
-        const tr = document.createElement("tr");
+      document.getElementById("tableRecordCount").textContent = "Mostrando " + items.length + " clientes";
+      var tot = allClients.reduce(function(a, b) { return a + (b.salesAmount || b.amount || 0); }, 0);
+      items.forEach(function(item, idx) {
+        var amt = item.salesAmount || item.amount || 0;
+        var cnt = item.salesCount || 0;
+        var pct = tot > 0 ? ((amt / tot) * 100).toFixed(1) : 0;
+        var tr = document.createElement("tr");
         tr.className = "hover:bg-slate-50";
-        tr.innerHTML = \`<td class="py-3 px-4 text-slate-400">\${idx + 1}</td><td class="py-3 px-4 font-bold">\${item.name}</td><td class="py-3 px-4 text-right font-bold">\${currencyFormatter.format(amt)}</td><td class="py-3 px-4 text-center font-bold">\${cnt}</td><td class="py-3 px-4 text-right">\${currencyFormatter.format(cnt > 0 ? amt / cnt : 0)}</td><td class="py-3 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold">\${pct}%</span></td><td class="py-3 px-4 text-center"><button class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200" onclick="openCustomerDetail('\${item.id}', '\${encodeURIComponent(item.name)}')">Ver Artículos 📦</button></td>\`;
+        tr.innerHTML = '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td><td class="py-3 px-4 font-bold">' + item.name + '</td><td class="py-3 px-4 text-right font-bold">' + currencyFormatter.format(amt) + '</td><td class="py-3 px-4 text-center font-bold">' + cnt + '</td><td class="py-3 px-4 text-right">' + currencyFormatter.format(cnt > 0 ? amt / cnt : 0) + '</td><td class="py-3 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold">' + pct + '%</span></td><td class="py-3 px-4 text-center"><button class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200" onclick="openCustomerDetail(\x27' + item.id + '\x27, \x27' + encodeURIComponent(item.name) + '\x27)">Ver Artículos 📦</button></td>';
         body.appendChild(tr);
       });
     }
@@ -655,13 +666,13 @@
     async function fetchProductsPage() {
       if (isLoadingProducts || !hasMoreProducts) return;
       isLoadingProducts = true;
-      const q = getDateQueryParams();
-      let u = \`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?sort=sales&order=desc&limit=50&\${q}\`;
-      if (nextProductCursor) u += \`&cursor=\${encodeURIComponent(nextProductCursor)}\`;
+      var q = getDateQueryParams();
+      var u = "https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/products/list?sort=sales&order=desc&limit=50&" + q;
+      if (nextProductCursor) u += "&cursor=" + encodeURIComponent(nextProductCursor);
       try {
-        const res = await fetch(u, { headers: getHeaders() });
+        var res = await fetch(u, { headers: getHeaders() });
         if (res.ok) {
-          const d = await res.json();
+          var d = await res.json();
           allGlobalProducts = allGlobalProducts.concat(d.items || []);
           nextProductCursor = d.nextCursor || null;
           hasMoreProducts = Boolean(nextProductCursor && (d.items || []).length > 0);
@@ -677,8 +688,8 @@
     }
 
     function renderProductsKPIs(items) {
-      let s = 0, u = 0, p = 0;
-      items.forEach(i => { s += (i.salesAmount || i.totalSales || 0); u += (i.totalSold || 0); p += (i.totalProfit || 0); });
+      var s = 0, u = 0, p = 0;
+      items.forEach(function(i) { s += (i.salesAmount || i.totalSales || 0); u += (i.totalSold || 0); p += (i.totalProfit || 0); });
       document.getElementById("kpiProdTotalSales").textContent = currencyFormatter.format(s);
       document.getElementById("kpiProdTotalUnits").textContent = numberFormatter.format(u);
       document.getElementById("kpiProdTotalProfit").textContent = currencyFormatter.format(p);
@@ -686,45 +697,38 @@
     }
 
     function renderProductsChart(items) {
-      const ctx = document.getElementById("topProductsChart").getContext("2d");
+      var ctx = document.getElementById("topProductsChart").getContext("2d");
       if (chartProductsInstance) chartProductsInstance.destroy();
       chartProductsInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: items.map(p => (p.productName || "").substring(0, 25)), datasets: [{ data: items.map(p => p.salesAmount || p.totalSales || 0), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 }] },
+        data: { labels: items.map(function(p){ return (p.productName || "").substring(0, 25); }), datasets: [{ data: items.map(function(p){ return p.salesAmount || p.totalSales || 0; }), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 }] },
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
       });
     }
 
     function renderGlobalProductsTable(items) {
-      const b = document.getElementById("productsGlobalTableBody");
-      const onlyL = document.getElementById("chkOnlyLosses").checked;
-      const term = document.getElementById("prodSearchInput").value.toLowerCase();
-      const filtered = items.filter(p => ((p.productName || "").toLowerCase().includes(term)) && (onlyL ? (p.totalProfit || 0) < 0 : true));
+      var b = document.getElementById("productsGlobalTableBody");
+      var onlyL = document.getElementById("chkOnlyLosses").checked;
+      var term = document.getElementById("prodSearchInput").value.toLowerCase();
+      var filtered = items.filter(function(p) {
+        return ((p.productName || "").toLowerCase().includes(term)) && (onlyL ? (p.totalProfit || 0) < 0 : true);
+      });
       b.innerHTML = "";
-      document.getElementById("prodTableRecordCount").textContent = \`Mostrando \${filtered.length} de \${allGlobalProducts.length} productos\`;
+      document.getElementById("prodTableRecordCount").textContent = "Mostrando " + filtered.length + " de " + allGlobalProducts.length + " productos";
 
-      filtered.forEach((prod, idx) => {
-        const sales = prod.salesAmount || prod.totalSales || 0;
-        const units = prod.totalSold || 0;
-        const profit = prod.totalProfit || 0;
-        const isLoss = profit < 0;
+      filtered.forEach(function(prod, idx) {
+        var sales = prod.salesAmount || prod.totalSales || 0;
+        var units = prod.totalSold || 0;
+        var profit = prod.totalProfit || 0;
+        var isLoss = profit < 0;
 
-        const imgTag = prod.imageUrl
-          ? \`<img src="\${prod.imageUrl}" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img" onerror="this.src=''; this.style.display='none';">\`
-          : \`<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>\`;
+        var imgTag = prod.imageUrl
+          ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img" onerror="this.src=\x27\x27; this.style.display=\x27none\x27;">'
+          : '<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
 
-        const tr = document.createElement("tr");
+        var tr = document.createElement("tr");
         tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50";
-        tr.innerHTML = \`
-          <td class="py-2.5 px-4 text-slate-400">\${idx + 1}</td>
-          <td class="py-2.5 px-4">\${imgTag}</td>
-          <td class="py-2.5 px-4 font-medium">\${prod.productName || "Sin Nombre"}</td>
-          <td class="py-2.5 px-4 text-center font-bold">\${numberFormatter.format(units)}</td>
-          <td class="py-2.5 px-4 text-right">\${currencyFormatter.format(units > 0 ? sales / units : 0)}</td>
-          <td class="py-2.5 px-4 text-right font-bold">\${currencyFormatter.format(sales)}</td>
-          <td class="py-2.5 px-4 text-right font-bold \${isLoss ? 'text-rose-600' : 'text-emerald-600'}">\${currencyFormatter.format(profit)}</td>
-          <td class="py-2.5 px-4 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold \${isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700'}">\${sales > 0 ? ((profit/sales)*100).toFixed(1) : 0}%</span></td>
-        \`;
+        tr.innerHTML = '<td class="py-2.5 px-4 text-slate-400">' + (idx + 1) + '</td><td class="py-2.5 px-4">' + imgTag + '</td><td class="py-2.5 px-4 font-medium">' + (prod.productName || "Sin Nombre") + '</td><td class="py-2.5 px-4 text-center font-bold">' + numberFormatter.format(units) + '</td><td class="py-2.5 px-4 text-right">' + currencyFormatter.format(units > 0 ? sales / units : 0) + '</td><td class="py-2.5 px-4 text-right font-bold">' + currencyFormatter.format(sales) + '</td><td class="py-2.5 px-4 text-right font-bold ' + (isLoss ? 'text-rose-600' : 'text-emerald-600') + '">' + currencyFormatter.format(profit) + '</td><td class="py-2.5 px-4 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700') + '">' + (sales > 0 ? ((profit/sales)*100).toFixed(1) : 0) + '%</span></td>';
         b.appendChild(tr);
       });
     }
@@ -733,22 +737,22 @@
     window.openCustomerDetail = async function(contactId, name) {
       document.getElementById("modalClientTitle").textContent = decodeURIComponent(name);
       document.getElementById("modalPeriodSubtitle").textContent = dateFilterMode === "custom"
-        ? \`Rango: \${document.getElementById("customStartDate").value} al \${document.getElementById("customEndDate").value}\`
-        : \`Mes: \${selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}\`;
+        ? "Rango: " + document.getElementById("customStartDate").value + " al " + document.getElementById("customEndDate").value
+        : "Mes: " + selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
       
       document.getElementById("productSearchInput").value = "";
       document.body.classList.add("overflow-hidden");
       document.getElementById("modalDetail").classList.remove("hidden");
 
-      const q = getDateQueryParams();
+      var q = getDateQueryParams();
       try {
-        const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?contactId=\${contactId}&sort=units&order=desc&limit=100&\${q}\`, { headers: getHeaders() });
+        var res = await fetch("https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/products/list?contactId=" + contactId + "&sort=units&order=desc&limit=100&" + q, { headers: getHeaders() });
         if (res.ok) {
-          const d = await res.json();
-          currentCustomerProducts = (d.items || []).filter(p => (p.salesAmount || p.totalSales || 0) > 0 || (p.totalSold || 0) > 0);
-          const tot = currentCustomerProducts.reduce((a, b) => a + (b.salesAmount || b.totalSales || 0), 0);
+          var d = await res.json();
+          currentCustomerProducts = (d.items || []).filter(function(p) { return (p.salesAmount || p.totalSales || 0) > 0 || (p.totalSold || 0) > 0; });
+          var tot = currentCustomerProducts.reduce(function(a, b) { return a + (b.salesAmount || b.totalSales || 0); }, 0);
           document.getElementById("modalClientTotalAmount").textContent = currencyFormatter.format(tot);
-          document.getElementById("modalClientTotalUnits").textContent = numberFormatter.format(currentCustomerProducts.reduce((a, b) => a + (b.totalSold || 0), 0));
+          document.getElementById("modalClientTotalUnits").textContent = numberFormatter.format(currentCustomerProducts.reduce(function(a, b) { return a + (b.totalSold || 0); }, 0));
           document.getElementById("modalClientTotalSkus").textContent = numberFormatter.format(currentCustomerProducts.length);
           renderModalProductRows(currentCustomerProducts, tot);
         }
@@ -758,19 +762,19 @@
     };
 
     function renderModalProductRows(prods, tot) {
-      const tb = document.getElementById("productsTableBody");
+      var tb = document.getElementById("productsTableBody");
       tb.innerHTML = "";
-      document.getElementById("productRecordCount").textContent = \`\${prods.length} productos\`;
+      document.getElementById("productRecordCount").textContent = prods.length + " productos";
       if (prods.length === 0) {
-        tb.innerHTML = \`<tr><td colspan="6" class="text-center py-8 text-slate-400">Sin productos coincidentes.</td></tr>\`;
+        tb.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">Sin productos coincidentes.</td></tr>';
         return;
       }
-      prods.forEach((p, i) => {
-        const amt = p.salesAmount || p.totalSales || 0;
-        const u = p.totalSold || 0;
-        const row = document.createElement("tr");
+      prods.forEach(function(p, i) {
+        var amt = p.salesAmount || p.totalSales || 0;
+        var u = p.totalSold || 0;
+        var row = document.createElement("tr");
         row.className = "hover:bg-slate-50";
-        row.innerHTML = \`<td class="p-2.5 text-slate-400">\${i+1}</td><td class="p-2.5 font-medium">\${p.productName}</td><td class="p-2.5 text-center font-bold">\${u}</td><td class="p-2.5 text-right">\${currencyFormatter.format(u > 0 ? amt / u : 0)}</td><td class="p-2.5 text-right font-bold">\${currencyFormatter.format(amt)}</td><td class="p-2.5 text-right"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">\${tot > 0 ? ((amt/tot)*100).toFixed(1) : 0}%</span></td>\`;
+        row.innerHTML = '<td class="p-2.5 text-slate-400">' + (i+1) + '</td><td class="p-2.5 font-medium">' + p.productName + '</td><td class="p-2.5 text-center font-bold">' + u + '</td><td class="p-2.5 text-right">' + currencyFormatter.format(u > 0 ? amt / u : 0) + '</td><td class="p-2.5 text-right font-bold">' + currencyFormatter.format(amt) + '</td><td class="p-2.5 text-right"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">' + (tot > 0 ? ((amt/tot)*100).toFixed(1) : 0) + '%</span></td>';
         tb.appendChild(row);
       });
     }
@@ -781,9 +785,9 @@
     }
 
     document.getElementById("productSearchInput").oninput = function(e) {
-      const term = e.target.value.toLowerCase();
-      const filtered = currentCustomerProducts.filter(p => (p.productName || "").toLowerCase().includes(term));
-      const tot = currentCustomerProducts.reduce((a, b) => a + (b.salesAmount || b.totalSales || 0), 0);
+      var term = e.target.value.toLowerCase();
+      var filtered = currentCustomerProducts.filter(function(p) { return (p.productName || "").toLowerCase().includes(term); });
+      var tot = currentCustomerProducts.reduce(function(a, b) { return a + (b.salesAmount || b.totalSales || 0); }, 0);
       renderModalProductRows(filtered, tot);
     };
 
@@ -793,7 +797,7 @@
       if (!document.getElementById("modalDetailCard").contains(e.target)) closeDetailModal();
     };
 
-    new IntersectionObserver((e) => {
+    new IntersectionObserver(function(e) {
       if (e[0].isIntersecting && activeTab === "products" && hasMoreProducts && !isLoadingProducts) fetchProductsPage();
     }, { threshold: 0.1 }).observe(document.getElementById("infiniteScrollTrigger"));
 
@@ -806,7 +810,9 @@
     document.getElementById("btnRefresh").onclick = refreshAll;
     document.getElementById("chkOnlyLosses").onchange = function() { renderGlobalProductsTable(allGlobalProducts); };
     document.getElementById("prodSearchInput").oninput = function() { renderGlobalProductsTable(allGlobalProducts); };
-    document.getElementById("searchInput").oninput = function(e) { renderClientsTable(allClients.filter(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))); };
+    document.getElementById("searchInput").oninput = function(e) {
+      renderClientsTable(allClients.filter(function(i) { return i.name.toLowerCase().includes(e.target.value.toLowerCase()); }));
+    };
 
     initDateInputs();
     refreshAll();
