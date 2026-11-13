@@ -19,7 +19,7 @@
   }
 
   if (!accessToken) {
-    alert("⚠️ No se detectó una sesión activa en Treinta. Inicia sesión en web.treinta.co primero.");
+    alert("⚠️ No se detectó una sesión activa en Treinta. Por favor inicia sesión primero en web.treinta.co.");
     return;
   }
 
@@ -47,6 +47,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+  <!-- CAPTURADOR DE ERRORES VISIBLE -->
+  <script>
+    window.onerror = function(msg, url, line) {
+      alert("⚠️ Error en Dashboard: " + msg + " (Línea: " + line + ")");
+      return false;
+    };
+  <\/script>
 
   <!-- BARRA DE NAVEGACIÓN -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -77,11 +85,10 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- FILTROS DE PERÍODO: MENSUAL vs RANGO PERSONALIZADO -->
+    <!-- FILTROS DE PERÍODO -->
     <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-4">
         
-        <!-- Conmutador de Modo -->
         <div class="flex items-center gap-3">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Modo:</span>
           <div class="inline-flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs font-semibold">
@@ -90,7 +97,7 @@
           </div>
         </div>
 
-        <!-- CONTROLES: MODO MENSUAL -->
+        <!-- MODO MENSUAL -->
         <div id="monthlyControls" class="flex flex-wrap items-center gap-2">
           <div class="relative inline-flex items-center bg-slate-100 rounded-lg border border-slate-200 p-0.5">
             <button id="btnPrevMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition">◀</button>
@@ -107,7 +114,7 @@
           <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
         </div>
 
-        <!-- CONTROLES: MODO RANGO PERSONALIZADO -->
+        <!-- MODO RANGO PERSONALIZADO -->
         <div id="customControls" class="hidden flex flex-wrap items-center gap-2 text-xs">
           <div class="flex items-center gap-1">
             <label for="customStartDate" class="text-slate-500 font-medium">Desde:</label>
@@ -125,7 +132,7 @@
       </div>
     </section>
 
-    <!-- SECCIÓN EJECUTIVA: GANANCIA & VENTAS -->
+    <!-- SECCIÓN EJECUTIVA -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
         <div>
@@ -247,9 +254,8 @@
     let refreshToken = ${JSON.stringify(refreshToken)};
     let storeId = ${JSON.stringify(storeId)};
 
-    // ESTADO DE FECHAS: "monthly" o "custom"
     let dateFilterMode = "monthly";
-    let selectedMonthDate = new Date(); // Fecha del modo mensual
+    let selectedMonthDate = new Date();
 
     let activeTab = "clients";
     let allClients = [];
@@ -269,9 +275,10 @@
     const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
     const numberFormatter = new Intl.NumberFormat('es-AR');
 
-    document.getElementById("btnCloseDashboard").addEventListener("click", () => {
+    // Botón Salir
+    document.getElementById("btnCloseDashboard").onclick = function() {
       window.parent.document.getElementById("treinta-dashboard-overlay").remove();
-    });
+    };
 
     function getHeaders() {
       return {
@@ -280,22 +287,19 @@
       };
     }
 
-    // --- CÁLCULO PRECISO DE ZONA HORARIA ARGENTINA (UTC-3) ---
     function getArgentinaStartISO(dateStr) {
       return dateStr + "T03:00:00.000Z";
     }
 
     function getArgentinaEndISO(dateStr) {
-      const [y, m, d] = dateStr.split("-").map(Number);
-      const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
+      const parts = dateStr.split("-").map(Number);
+      const nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
       const nextDayStr = nextDay.toISOString().split("T")[0];
       return nextDayStr + "T02:59:59.999Z";
     }
 
-    // Generador de parámetros de fecha según el modo
     function getDateQueryParams() {
       const tz = encodeURIComponent("America/Buenos_Aires");
-
       if (dateFilterMode === "custom") {
         const start = document.getElementById("customStartDate").value;
         const end = document.getElementById("customEndDate").value;
@@ -308,13 +312,13 @@
       }
     }
 
-    // --- CONMUTADOR DE MODOS (MENSUAL vs PERSONALIZADO) ---
+    // Selector de Modo
     const modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
     const modeCustomBtn = document.getElementById("modeCustomBtn");
     const monthlyControls = document.getElementById("monthlyControls");
     const customControls = document.getElementById("customControls");
 
-    modeMonthlyBtn.addEventListener("click", () => {
+    modeMonthlyBtn.onclick = function() {
       dateFilterMode = "monthly";
       modeMonthlyBtn.className = "px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition";
       modeCustomBtn.className = "px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
@@ -322,23 +326,21 @@
       customControls.classList.add("hidden");
       syncPresetButtonStyles();
       refreshAll();
-    });
+    };
 
-    modeCustomBtn.addEventListener("click", () => {
+    modeCustomBtn.onclick = function() {
       dateFilterMode = "custom";
       modeCustomBtn.className = "px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition";
       modeMonthlyBtn.className = "px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
       monthlyControls.classList.add("hidden");
       customControls.classList.remove("hidden");
       refreshAll();
-    });
+    };
 
-    // Fechas por defecto
     function initDateInputs() {
       const now = new Date();
       selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // Por defecto en rango personalizado: últimos 7 días
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(now.getDate() - 7);
       document.getElementById("customStartDate").value = sevenDaysAgo.toISOString().split("T")[0];
@@ -360,19 +362,80 @@
       refreshAll();
     }
 
-    document.getElementById("btnPrevMonthStep").addEventListener("click", () => stepMonth(-1));
-    document.getElementById("btnNextMonthStep").addEventListener("click", () => stepMonth(1));
-    document.getElementById("btnCurrentMonth").addEventListener("click", () => {
+    document.getElementById("btnPrevMonthStep").onclick = function() { stepMonth(-1); };
+    document.getElementById("btnNextMonthStep").onclick = function() { stepMonth(1); };
+    document.getElementById("btnCurrentMonth").onclick = function() {
       const now = new Date();
       selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
       syncPresetButtonStyles();
       refreshAll();
+    };
+
+    document.getElementById("btnApplyCustomRange").onclick = function() { refreshAll(); };
+
+    // Menú flotante de meses
+    const btnMonthDropdownToggle = document.getElementById("btnMonthDropdownToggle");
+    const monthDropdownMenu = document.getElementById("monthDropdownMenu");
+    const monthDropdownList = document.getElementById("monthDropdownList");
+
+    function renderMonthDropdownOptions() {
+      monthDropdownList.innerHTML = "";
+      const now = new Date();
+      const realCurrentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      for (let offset = -6; offset <= 6; offset++) {
+        const optionDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + offset, 1);
+        const isCurrentSelected = optionDate.getTime() === selectedMonthDate.getTime();
+        const isFuture = optionDate > realCurrentMonthDate;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        let label = optionDate.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }).replace('.', '');
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+
+        if (isCurrentSelected) {
+          btn.className = "px-2 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm";
+          btn.textContent = "✓ " + label;
+        } else if (isFuture) {
+          btn.className = "px-2 py-1.5 text-xs text-slate-300 cursor-not-allowed rounded-lg text-left";
+          btn.textContent = label;
+          btn.disabled = true;
+        } else {
+          btn.className = "px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-left transition";
+          btn.textContent = label;
+        }
+
+        btn.onclick = function() {
+          if (isFuture || isCurrentSelected) return;
+          selectedMonthDate = optionDate;
+          monthDropdownMenu.classList.add("hidden");
+          syncPresetButtonStyles();
+          refreshAll();
+        };
+
+        monthDropdownList.appendChild(btn);
+      }
+    }
+
+    btnMonthDropdownToggle.onclick = function(e) {
+      e.stopPropagation();
+      const isHidden = monthDropdownMenu.classList.contains("hidden");
+      if (isHidden) {
+        renderMonthDropdownOptions();
+        monthDropdownMenu.classList.remove("hidden");
+      } else {
+        monthDropdownMenu.classList.add("hidden");
+      }
+    };
+
+    document.addEventListener("click", function(e) {
+      if (!monthDropdownMenu.contains(e.target) && !btnMonthDropdownToggle.contains(e.target)) {
+        monthDropdownMenu.classList.add("hidden");
+      }
     });
 
-    document.getElementById("btnApplyCustomRange").addEventListener("click", () => refreshAll());
-
     function selectMonthFromChart(iso) {
-      if (dateFilterMode === "custom") return; // En modo custom no salta
+      if (dateFilterMode === "custom") return;
       const d = new Date(iso);
       selectedMonthDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
       syncPresetButtonStyles();
@@ -380,8 +443,8 @@
     }
 
     // Pestañas
-    document.getElementById("tabBtnClients").addEventListener("click", () => switchTab("clients"));
-    document.getElementById("tabBtnProducts").addEventListener("click", () => switchTab("products"));
+    document.getElementById("tabBtnClients").onclick = function() { switchTab("clients"); };
+    document.getElementById("tabBtnProducts").onclick = function() { switchTab("products"); };
 
     function switchTab(t) {
       activeTab = t;
@@ -403,12 +466,16 @@
     // Consultas
     async function fetchExecutiveSummary() {
       const q = getDateQueryParams();
-      const [rp, rs] = await Promise.all([
-        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/profit?\${q}\`, { headers: getHeaders() }),
-        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/sales?\${q}\`, { headers: getHeaders() })
-      ]);
-      if (rp.ok) renderExecutiveProfit(await rp.json());
-      if (rs.ok) renderExecutiveSales(await rs.json());
+      try {
+        const [rp, rs] = await Promise.all([
+          fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/profit?\${q}\`, { headers: getHeaders() }),
+          fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/sales?\${q}\`, { headers: getHeaders() })
+        ]);
+        if (rp.ok) renderExecutiveProfit(await rp.json());
+        if (rs.ok) renderExecutiveSales(await rs.json());
+      } catch(err) {
+        console.error("Error en resumen ejecutivo:", err);
+      }
     }
 
     function renderExecutiveProfit(data) {
@@ -470,14 +537,18 @@
 
     async function fetchClientsData() {
       const q = getDateQueryParams();
-      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/customers?\${q}\`, { headers: getHeaders() });
-      if (res.ok) {
-        const d = await res.json();
-        allClients = (d.items || []).filter(i => (i.salesAmount || i.amount) > 0);
-        allClients.sort((a, b) => (b.salesAmount || b.amount) - (a.salesAmount || a.amount));
-        renderClientsKPIs(allClients);
-        renderClientsChart(allClients.slice(0, 10));
-        renderClientsTable(allClients);
+      try {
+        const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/customers?\${q}\`, { headers: getHeaders() });
+        if (res.ok) {
+          const d = await res.json();
+          allClients = (d.items || []).filter(i => (i.salesAmount || i.amount) > 0);
+          allClients.sort((a, b) => (b.salesAmount || b.amount) - (a.salesAmount || a.amount));
+          renderClientsKPIs(allClients);
+          renderClientsChart(allClients.slice(0, 10));
+          renderClientsTable(allClients);
+        }
+      } catch(err) {
+        console.error("Error clientes:", err);
       }
     }
 
@@ -540,7 +611,11 @@
           try { renderProductsChart(allGlobalProducts.slice(0, 10)); } catch(e){}
           renderGlobalProductsTable(allGlobalProducts);
         }
-      } finally { isLoadingProducts = false; }
+      } catch(err) {
+        console.error("Error productos:", err);
+      } finally { 
+        isLoadingProducts = false; 
+      }
     }
 
     function renderProductsKPIs(items) {
@@ -577,8 +652,8 @@
         const isLoss = profit < 0;
 
         const imgTag = prod.imageUrl
-          ? \`<img src="\${prod.imageUrl}" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img" onerror="this.outerHTML='<div class=\\\\\\'w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-xs\\\\\\'>📦</div>'">\`
-          : \`<div class="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-xs">📦</div>\`;
+          ? \`<img src="\${prod.imageUrl}" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img" onerror="this.src=''; this.style.display='none';">\`
+          : \`<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>\`;
 
         const tr = document.createElement("tr");
         tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50";
@@ -596,25 +671,31 @@
       });
     }
 
+    // Modal de Cliente
     window.openCustomerDetail = async function(contactId, name) {
       document.getElementById("modalClientTitle").textContent = decodeURIComponent(name);
       document.getElementById("modalPeriodSubtitle").textContent = dateFilterMode === "custom"
         ? \`Rango: \${document.getElementById("customStartDate").value} al \${document.getElementById("customEndDate").value}\`
-        : \`Mes: \${selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })\`;
+        : \`Mes: \${selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}\`;
+      
       document.getElementById("productSearchInput").value = "";
       document.body.classList.add("overflow-hidden");
       document.getElementById("modalDetail").classList.remove("hidden");
 
       const q = getDateQueryParams();
-      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?contactId=\${contactId}&sort=units&order=desc&limit=100&\${q}\`, { headers: getHeaders() });
-      if (res.ok) {
-        const d = await res.json();
-        currentCustomerProducts = (d.items || []).filter(p => (p.salesAmount || p.totalSales || 0) > 0 || (p.totalSold || 0) > 0);
-        const tot = currentCustomerProducts.reduce((a, b) => a + (b.salesAmount || b.totalSales || 0), 0);
-        document.getElementById("modalClientTotalAmount").textContent = currencyFormatter.format(tot);
-        document.getElementById("modalClientTotalUnits").textContent = numberFormatter.format(currentCustomerProducts.reduce((a, b) => a + (b.totalSold || 0), 0));
-        document.getElementById("modalClientTotalSkus").textContent = numberFormatter.format(currentCustomerProducts.length);
-        renderModalProductRows(currentCustomerProducts, tot);
+      try {
+        const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?contactId=\${contactId}&sort=units&order=desc&limit=100&\${q}\`, { headers: getHeaders() });
+        if (res.ok) {
+          const d = await res.json();
+          currentCustomerProducts = (d.items || []).filter(p => (p.salesAmount || p.totalSales || 0) > 0 || (p.totalSold || 0) > 0);
+          const tot = currentCustomerProducts.reduce((a, b) => a + (b.salesAmount || b.totalSales || 0), 0);
+          document.getElementById("modalClientTotalAmount").textContent = currencyFormatter.format(tot);
+          document.getElementById("modalClientTotalUnits").textContent = numberFormatter.format(currentCustomerProducts.reduce((a, b) => a + (b.totalSold || 0), 0));
+          document.getElementById("modalClientTotalSkus").textContent = numberFormatter.format(currentCustomerProducts.length);
+          renderModalProductRows(currentCustomerProducts, tot);
+        }
+      } catch(err) {
+        console.error("Error detalle cliente:", err);
       }
     };
 
@@ -641,18 +722,18 @@
       document.body.classList.remove("overflow-hidden");
     }
 
-    document.getElementById("productSearchInput").addEventListener("input", (e) => {
+    document.getElementById("productSearchInput").oninput = function(e) {
       const term = e.target.value.toLowerCase();
       const filtered = currentCustomerProducts.filter(p => (p.productName || "").toLowerCase().includes(term));
       const tot = currentCustomerProducts.reduce((a, b) => a + (b.salesAmount || b.totalSales || 0), 0);
       renderModalProductRows(filtered, tot);
-    });
+    };
 
-    document.getElementById("btnCloseDetail").addEventListener("click", closeDetailModal);
-    document.getElementById("btnCloseDetailFooter").addEventListener("click", closeDetailModal);
-    document.getElementById("modalDetail").addEventListener("click", (e) => {
+    document.getElementById("btnCloseDetail").onclick = closeDetailModal;
+    document.getElementById("btnCloseDetailFooter").onclick = closeDetailModal;
+    document.getElementById("modalDetail").onclick = function(e) {
       if (!document.getElementById("modalDetailCard").contains(e.target)) closeDetailModal();
-    });
+    };
 
     new IntersectionObserver((e) => {
       if (e[0].isIntersecting && activeTab === "products" && hasMoreProducts && !isLoadingProducts) fetchProductsPage();
@@ -664,10 +745,10 @@
       else resetAndFetchProducts();
     }
 
-    document.getElementById("btnRefresh").addEventListener("click", refreshAll);
-    document.getElementById("chkOnlyLosses").addEventListener("change", () => renderGlobalProductsTable(allGlobalProducts));
-    document.getElementById("prodSearchInput").addEventListener("input", () => renderGlobalProductsTable(allGlobalProducts));
-    document.getElementById("searchInput").addEventListener("input", (e) => renderClientsTable(allClients.filter(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))));
+    document.getElementById("btnRefresh").onclick = refreshAll;
+    document.getElementById("chkOnlyLosses").onchange = function() { renderGlobalProductsTable(allGlobalProducts); };
+    document.getElementById("prodSearchInput").oninput = function() { renderGlobalProductsTable(allGlobalProducts); };
+    document.getElementById("searchInput").oninput = function(e) { renderClientsTable(allClients.filter(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))); };
 
     initDateInputs();
     refreshAll();
