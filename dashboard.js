@@ -478,7 +478,7 @@
       }
     }
 
-    function renderExecutiveProfit(data) {
+	function renderExecutiveProfit(data) {
       document.getElementById("execProfitValue").textContent = currencyFormatter.format(data.totalProfit || 0);
       document.getElementById("execProfitVendiste").textContent = currencyFormatter.format(data.totalSales || 0);
       document.getElementById("execProfitCosto").textContent = currencyFormatter.format(data.totalCost || 0);
@@ -487,22 +487,51 @@
       document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
       profitPeriodsCache = data.periods || [];
+      
+      // Formatear etiquetas: si es rango personalizado muestra Día + Mes (ej: 01 oct, 15 oct)
       const labels = profitPeriodsCache.map(p => {
         const d = new Date(p.periodStart);
+        if (dateFilterMode === "custom" || p.granularity === "day") {
+          return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '');
+        }
         return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
       });
+
       const colors = profitPeriodsCache.map((p, idx) => idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
 
       const ctx = document.getElementById("chartExecProfit").getContext("2d");
       if (chartExecProfitInstance) chartExecProfitInstance.destroy();
       chartExecProfitInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets: [{ data: profitPeriodsCache.map(p => p.totalProfit || 0), backgroundColor: colors, borderRadius: 4 }] },
+        data: { labels, datasets: [{ data: profitPeriodsCache.map(p => p.totalProfit || 0), backgroundColor: colors, borderRadius: 3 }] },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const p = profitPeriodsCache[items[0].dataIndex];
+                  const d = new Date(p.periodStart);
+                  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+                },
+                label: (c) => ` Ganancia: ${currencyFormatter.format(c.raw)}`
+              }
+            }
+          },
           onClick: (e, els) => els.length && selectMonthFromChart(profitPeriodsCache[els[0].index].periodStart),
-          scales: { x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }, y: { display: false } }
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 8, // Máximo 8 fechas distribuidas para que se lean limpias
+                font: { size: 9, weight: 'bold' },
+                color: '#64748b'
+              }
+            },
+            y: { display: false }
+          }
         }
       });
     }
@@ -515,25 +544,54 @@
       document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
       salesPeriodsCache = data.periods || [];
+      
       const labels = salesPeriodsCache.map(p => {
         const d = new Date(p.periodStart);
+        if (dateFilterMode === "custom" || p.granularity === "day") {
+          return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '');
+        }
         return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
       });
+
       const colors = salesPeriodsCache.map((p, idx) => idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
 
       const ctx = document.getElementById("chartExecSales").getContext("2d");
       if (chartExecSalesInstance) chartExecSalesInstance.destroy();
       chartExecSalesInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets: [{ data: salesPeriodsCache.map(p => p.salesAmount || p.value || 0), backgroundColor: colors, borderRadius: 4 }] },
+        data: { labels, datasets: [{ data: salesPeriodsCache.map(p => p.salesAmount || p.value || 0), backgroundColor: colors, borderRadius: 3 }] },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const p = salesPeriodsCache[items[0].dataIndex];
+                  const d = new Date(p.periodStart);
+                  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+                },
+                label: (c) => ` Ventas: ${currencyFormatter.format(c.raw)}`
+              }
+            }
+          },
           onClick: (e, els) => els.length && selectMonthFromChart(salesPeriodsCache[els[0].index].periodStart),
-          scales: { x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }, y: { display: false } }
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 8,
+                font: { size: 9, weight: 'bold' },
+                color: '#64748b'
+              }
+            },
+            y: { display: false }
+          }
         }
       });
     }
+
 
     async function fetchClientsData() {
       const q = getDateQueryParams();
