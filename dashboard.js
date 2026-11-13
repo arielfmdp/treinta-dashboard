@@ -640,18 +640,65 @@
       });
     }
 
+    // PUNTO CLAVE: TABLA DE CLIENTES SIN COMILLAS EN LÍNEA 404
     function renderClientsTable(items) {
       var body = document.getElementById("clientsTableBody");
       body.innerHTML = "";
       document.getElementById("tableRecordCount").textContent = "Mostrando " + items.length + " clientes";
       var tot = allClients.reduce(function(a, b) { return a + (b.salesAmount || b.amount || 0); }, 0);
+      
       items.forEach(function(item, idx) {
         var amt = item.salesAmount || item.amount || 0;
         var cnt = item.salesCount || 0;
         var pct = tot > 0 ? ((amt / tot) * 100).toFixed(1) : 0;
+        
         var tr = document.createElement("tr");
         tr.className = "hover:bg-slate-50";
-        tr.innerHTML = '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td><td class="py-3 px-4 font-bold">' + item.name + '</td><td class="py-3 px-4 text-right font-bold">' + currencyFormatter.format(amt) + '</td><td class="py-3 px-4 text-center font-bold">' + cnt + '</td><td class="py-3 px-4 text-right">' + currencyFormatter.format(cnt > 0 ? amt / cnt : 0) + '</td><td class="py-3 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold">' + pct + '%</span></td><td class="py-3 px-4 text-center"><button class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200" onclick="openCustomerDetail(\x27' + item.id + '\x27, \x27' + encodeURIComponent(item.name) + '\x27)">Ver Artículos 📦</button></td>';
+
+        var tdIdx = document.createElement("td");
+        tdIdx.className = "py-3 px-4 text-slate-400";
+        tdIdx.textContent = (idx + 1);
+
+        var tdName = document.createElement("td");
+        tdName.className = "py-3 px-4 font-bold";
+        tdName.textContent = item.name;
+
+        var tdAmt = document.createElement("td");
+        tdAmt.className = "py-3 px-4 text-right font-bold";
+        tdAmt.textContent = currencyFormatter.format(amt);
+
+        var tdCnt = document.createElement("td");
+        tdCnt.className = "py-3 px-4 text-center font-bold";
+        tdCnt.textContent = cnt;
+
+        var tdAvg = document.createElement("td");
+        tdAvg.className = "py-3 px-4 text-right";
+        tdAvg.textContent = currencyFormatter.format(cnt > 0 ? amt / cnt : 0);
+
+        var tdPct = document.createElement("td");
+        tdPct.className = "py-3 px-4 text-right";
+        tdPct.innerHTML = '<span class="px-2 py-0.5 rounded bg-slate-100 font-bold">' + pct + '%</span>';
+
+        var tdAction = document.createElement("td");
+        tdAction.className = "py-3 px-4 text-center";
+        
+        // Botón creado como nodo DOM: libre de errores de comillas
+        var btn = document.createElement("button");
+        btn.className = "px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200 transition";
+        btn.textContent = "Ver Artículos 📦";
+        btn.onclick = function() {
+          openCustomerDetail(item.id, item.name);
+        };
+        tdAction.appendChild(btn);
+
+        tr.appendChild(tdIdx);
+        tr.appendChild(tdName);
+        tr.appendChild(tdAmt);
+        tr.appendChild(tdCnt);
+        tr.appendChild(tdAvg);
+        tr.appendChild(tdPct);
+        tr.appendChild(tdAction);
+
         body.appendChild(tr);
       });
     }
@@ -701,7 +748,7 @@
       if (chartProductsInstance) chartProductsInstance.destroy();
       chartProductsInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: items.map(function(p){ return (p.productName || "").substring(0, 25); }), datasets: [{ data: items.map(function(p){ return p.salesAmount || p.totalSales || 0; }), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 }] },
+        data: { labels: items.map(function(p){ return (p.productName || "").substring(0, 25); }), datasets: [{ data: items.map(p => p.salesAmount || p.totalSales || 0), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 }] },
         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
       });
     }
@@ -723,7 +770,7 @@
         var isLoss = profit < 0;
 
         var imgTag = prod.imageUrl
-          ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img" onerror="this.src=\x27\x27; this.style.display=\x27none\x27;">'
+          ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img">'
           : '<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
 
         var tr = document.createElement("tr");
@@ -735,7 +782,7 @@
 
     // Modal de Cliente
     window.openCustomerDetail = async function(contactId, name) {
-      document.getElementById("modalClientTitle").textContent = decodeURIComponent(name);
+      document.getElementById("modalClientTitle").textContent = name;
       document.getElementById("modalPeriodSubtitle").textContent = dateFilterMode === "custom"
         ? "Rango: " + document.getElementById("customStartDate").value + " al " + document.getElementById("customEndDate").value
         : "Mes: " + selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
