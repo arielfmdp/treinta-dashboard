@@ -1,10 +1,8 @@
 (function () {
-  // Evitar abrir múltiples instancias
   if (document.getElementById("treinta-dashboard-overlay")) {
     document.getElementById("treinta-dashboard-overlay").remove();
   }
 
-  // 1. Extraer credenciales vivas de Treinta
   let accessToken = "";
   let refreshToken = "";
   let storeId = localStorage.getItem("STORE_ID") || "205d87a4-7a4a-5a33-88c4-6835353f00a1";
@@ -21,11 +19,10 @@
   }
 
   if (!accessToken) {
-    alert("⚠️ No se detectó una sesión activa en Treinta. Por favor, inicia sesión primero en web.treinta.co.");
+    alert("⚠️ No se detectó una sesión activa en Treinta. Inicia sesión en web.treinta.co primero.");
     return;
   }
 
-  // 2. Crear el iframe contenedor a pantalla completa
   const iframe = document.createElement("iframe");
   iframe.id = "treinta-dashboard-overlay";
   iframe.style.position = "fixed";
@@ -38,7 +35,6 @@
   iframe.style.backgroundColor = "#f1f5f9";
   document.body.appendChild(iframe);
 
-  // 3. Inyectar todo el HTML, estilos y lógica dentro del iframe
   const doc = iframe.contentWindow.document;
   doc.open();
   doc.write(`
@@ -63,17 +59,11 @@
         </div>
       </div>
 
-      <!-- SELECTOR DE VISTAS -->
       <nav class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-        <button id="tabBtnClients" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600">
-          👥 Clientes
-        </button>
-        <button id="tabBtnProducts" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">
-          📦 Productos
-        </button>
+        <button id="tabBtnClients" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600">👥 Clientes</button>
+        <button id="tabBtnProducts" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">📦 Productos</button>
       </nav>
 
-      <!-- BOTONES DE ACCIÓN & CERRAR -->
       <div class="flex items-center gap-2">
         <button id="btnRefresh" class="text-xs font-semibold px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition flex items-center gap-1.5">
           <span id="refreshIcon">🔄</span> Actualizar
@@ -87,27 +77,51 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- FILTROS DE PERÍODO -->
-    <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Período:</span>
-        <div class="relative inline-flex items-center bg-slate-100 rounded-lg border border-slate-200 p-0.5">
-          <button id="btnPrevMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition">◀</button>
-          <button id="btnMonthDropdownToggle" class="px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-white rounded transition flex items-center gap-1 capitalize min-w-[130px] justify-center">
-            <span id="lblCurrentPeriod">Cargando...</span>
-            <span class="text-[9px] text-slate-400">▼</span>
-          </button>
-          <button id="btnNextMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition disabled:opacity-30">▶</button>
-          <div id="monthDropdownMenu" class="hidden absolute top-full left-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50">
-            <div class="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 mb-1 border-b">Saltar a un mes:</div>
-            <div id="monthDropdownList" class="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto"></div>
+    <!-- FILTROS DE PERÍODO: MENSUAL vs RANGO PERSONALIZADO -->
+    <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        
+        <!-- Conmutador de Modo -->
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Modo:</span>
+          <div class="inline-flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs font-semibold">
+            <button id="modeMonthlyBtn" class="px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition">Mensual</button>
+            <button id="modeCustomBtn" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">Rango Personalizado</button>
           </div>
         </div>
-        <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
-      </div>
-      <div class="flex items-center gap-2 text-xs">
-        <label for="inputDate" class="text-slate-500 font-medium">Inicio:</label>
-        <input type="date" id="inputDate" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+
+        <!-- CONTROLES: MODO MENSUAL -->
+        <div id="monthlyControls" class="flex flex-wrap items-center gap-2">
+          <div class="relative inline-flex items-center bg-slate-100 rounded-lg border border-slate-200 p-0.5">
+            <button id="btnPrevMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition">◀</button>
+            <button id="btnMonthDropdownToggle" class="px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-white rounded transition flex items-center gap-1 capitalize min-w-[130px] justify-center">
+              <span id="lblCurrentPeriod">Cargando...</span>
+              <span class="text-[9px] text-slate-400">▼</span>
+            </button>
+            <button id="btnNextMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition disabled:opacity-30">▶</button>
+            <div id="monthDropdownMenu" class="hidden absolute top-full left-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50">
+              <div class="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 mb-1 border-b">Saltar a un mes:</div>
+              <div id="monthDropdownList" class="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto"></div>
+            </div>
+          </div>
+          <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
+        </div>
+
+        <!-- CONTROLES: MODO RANGO PERSONALIZADO -->
+        <div id="customControls" class="hidden flex flex-wrap items-center gap-2 text-xs">
+          <div class="flex items-center gap-1">
+            <label for="customStartDate" class="text-slate-500 font-medium">Desde:</label>
+            <input type="date" id="customStartDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+          </div>
+          <div class="flex items-center gap-1">
+            <label for="customEndDate" class="text-slate-500 font-medium">Hasta:</label>
+            <input type="date" id="customEndDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+          </div>
+          <button id="btnApplyCustomRange" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
+            Filtrar Rango
+          </button>
+        </div>
+
       </div>
     </section>
 
@@ -121,7 +135,7 @@
             <span id="execProfitValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span>
           </div>
           <div class="mt-2">
-            <span id="execProfitTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs mes pasado</span>
+            <span id="execProfitTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
           </div>
         </div>
         <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecProfit"></canvas></div>
@@ -137,7 +151,7 @@
           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tus ventas</h3>
           <div class="mt-1"><span id="execSalesValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span></div>
           <div class="mt-2">
-            <span id="execSalesTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs mes pasado</span>
+            <span id="execSalesTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
           </div>
         </div>
         <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecSales"></canvas></div>
@@ -200,7 +214,7 @@
 
   </main>
 
-  <!-- MODAL DETALLE CLIENTE (CON ALTURA FIJA Y AISLADA) -->
+  <!-- MODAL DETALLE CLIENTE -->
   <div id="modalDetail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 sm:p-6">
     <div id="modalDetailCard" class="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 h-[85vh] max-h-[780px] min-h-[520px] flex flex-col">
       <div class="flex justify-between items-start border-b pb-3 flex-shrink-0">
@@ -233,10 +247,14 @@
     let refreshToken = ${JSON.stringify(refreshToken)};
     let storeId = ${JSON.stringify(storeId)};
 
+    // ESTADO DE FECHAS: "monthly" o "custom"
+    let dateFilterMode = "monthly";
+    let selectedMonthDate = new Date(); // Fecha del modo mensual
+
     let activeTab = "clients";
     let allClients = [];
     let allGlobalProducts = [];
-    let currentCustomerProducts = []; // Almacén global para el buscador modal
+    let currentCustomerProducts = [];
     let nextProductCursor = null;
     let isLoadingProducts = false;
     let hasMoreProducts = true;
@@ -251,7 +269,6 @@
     const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
     const numberFormatter = new Intl.NumberFormat('es-AR');
 
-    // Cerrar el dashboard al pulsar "Volver a Treinta"
     document.getElementById("btnCloseDashboard").addEventListener("click", () => {
       window.parent.document.getElementById("treinta-dashboard-overlay").remove();
     });
@@ -263,36 +280,101 @@
       };
     }
 
-    function setDateInputs() {
-      const now = new Date();
-      document.getElementById("inputDate").value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      syncPresetButtonStyles();
+    // --- CÁLCULO PRECISO DE ZONA HORARIA ARGENTINA (UTC-3) ---
+    function getArgentinaStartISO(dateStr) {
+      return dateStr + "T03:00:00.000Z";
     }
 
-    function getISODateStart(dateString) { return dateString + "T03:00:00.000Z"; }
+    function getArgentinaEndISO(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
+      const nextDayStr = nextDay.toISOString().split("T")[0];
+      return nextDayStr + "T02:59:59.999Z";
+    }
+
+    // Generador de parámetros de fecha según el modo
+    function getDateQueryParams() {
+      const tz = encodeURIComponent("America/Buenos_Aires");
+
+      if (dateFilterMode === "custom") {
+        const start = document.getElementById("customStartDate").value;
+        const end = document.getElementById("customEndDate").value;
+        return \`timeUnit=custom&startDate=\${getArgentinaStartISO(start)}&endDate=\${getArgentinaEndISO(end)}&timeZone=\${tz}\`;
+      } else {
+        const y = selectedMonthDate.getFullYear();
+        const m = selectedMonthDate.getMonth() + 1;
+        const firstDayStr = \`\${y}-\${m < 10 ? '0' + m : m}-01\`;
+        return \`timeUnit=monthly&startDate=\${getArgentinaStartISO(firstDayStr)}&timeZone=\${tz}\`;
+      }
+    }
+
+    // --- CONMUTADOR DE MODOS (MENSUAL vs PERSONALIZADO) ---
+    const modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
+    const modeCustomBtn = document.getElementById("modeCustomBtn");
+    const monthlyControls = document.getElementById("monthlyControls");
+    const customControls = document.getElementById("customControls");
+
+    modeMonthlyBtn.addEventListener("click", () => {
+      dateFilterMode = "monthly";
+      modeMonthlyBtn.className = "px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition";
+      modeCustomBtn.className = "px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
+      monthlyControls.classList.remove("hidden");
+      customControls.classList.add("hidden");
+      syncPresetButtonStyles();
+      refreshAll();
+    });
+
+    modeCustomBtn.addEventListener("click", () => {
+      dateFilterMode = "custom";
+      modeCustomBtn.className = "px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition";
+      modeMonthlyBtn.className = "px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
+      monthlyControls.classList.add("hidden");
+      customControls.classList.remove("hidden");
+      refreshAll();
+    });
+
+    // Fechas por defecto
+    function initDateInputs() {
+      const now = new Date();
+      selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Por defecto en rango personalizado: últimos 7 días
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      document.getElementById("customStartDate").value = sevenDaysAgo.toISOString().split("T")[0];
+      document.getElementById("customEndDate").value = now.toISOString().split("T")[0];
+
+      syncPresetButtonStyles();
+    }
 
     function syncPresetButtonStyles() {
       const now = new Date();
       const currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      const [year, month] = document.getElementById("inputDate").value.split("-").map(Number);
-      const displayDate = new Date(year, month - 1, 1);
-      document.getElementById("lblCurrentPeriod").textContent = displayDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-      document.getElementById("btnNextMonthStep").disabled = displayDate >= currentMonthDate;
+      document.getElementById("lblCurrentPeriod").textContent = selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+      document.getElementById("btnNextMonthStep").disabled = selectedMonthDate >= currentMonthDate;
     }
 
     function stepMonth(delta) {
-      const [year, month] = document.getElementById("inputDate").value.split("-").map(Number);
-      document.getElementById("inputDate").value = new Date(year, (month - 1) + delta, 1).toISOString().split("T")[0];
+      selectedMonthDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + delta, 1);
       syncPresetButtonStyles();
       refreshAll();
     }
 
     document.getElementById("btnPrevMonthStep").addEventListener("click", () => stepMonth(-1));
     document.getElementById("btnNextMonthStep").addEventListener("click", () => stepMonth(1));
-    document.getElementById("btnCurrentMonth").addEventListener("click", () => setDateInputs() || refreshAll());
+    document.getElementById("btnCurrentMonth").addEventListener("click", () => {
+      const now = new Date();
+      selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      syncPresetButtonStyles();
+      refreshAll();
+    });
+
+    document.getElementById("btnApplyCustomRange").addEventListener("click", () => refreshAll());
 
     function selectMonthFromChart(iso) {
-      document.getElementById("inputDate").value = iso.split("T")[0];
+      if (dateFilterMode === "custom") return; // En modo custom no salta
+      const d = new Date(iso);
+      selectedMonthDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
       syncPresetButtonStyles();
       refreshAll();
     }
@@ -320,11 +402,10 @@
 
     // Consultas
     async function fetchExecutiveSummary() {
-      const iso = getISODateStart(document.getElementById("inputDate").value);
-      const tz = encodeURIComponent("America/Buenos_Aires");
+      const q = getDateQueryParams();
       const [rp, rs] = await Promise.all([
-        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/profit?timeUnit=monthly&startDate=\${iso}&timeZone=\${tz}\`, { headers: getHeaders() }),
-        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/sales?timeUnit=monthly&startDate=\${iso}&timeZone=\${tz}\`, { headers: getHeaders() })
+        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/profit?\${q}\`, { headers: getHeaders() }),
+        fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/sales?\${q}\`, { headers: getHeaders() })
       ]);
       if (rp.ok) renderExecutiveProfit(await rp.json());
       if (rs.ok) renderExecutiveSales(await rs.json());
@@ -336,15 +417,14 @@
       document.getElementById("execProfitCosto").textContent = currencyFormatter.format(data.totalCost || 0);
       document.getElementById("execProfitMargen").textContent = (data.marginPercentage || 0).toFixed(2) + "%";
       const tr = data.trendPercentage || 0;
-      document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs mes pasado";
+      document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
       profitPeriodsCache = data.periods || [];
       const labels = profitPeriodsCache.map(p => {
         const d = new Date(p.periodStart);
         return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
       });
-      const selectedMonthKey = document.getElementById("inputDate").value.slice(0, 7);
-      const colors = profitPeriodsCache.map(p => (p.periodStart || "").slice(0, 7) === selectedMonthKey ? "#059669" : "#a7f3d0");
+      const colors = profitPeriodsCache.map((p, idx) => idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
 
       const ctx = document.getElementById("chartExecProfit").getContext("2d");
       if (chartExecProfitInstance) chartExecProfitInstance.destroy();
@@ -365,15 +445,14 @@
       document.getElementById("execSalesTotalUnits").textContent = numberFormatter.format(data.totalSold || 0);
       document.getElementById("execSalesAvgTicket").textContent = currencyFormatter.format(data.averageBySale || 0);
       const tr = data.trendPercentage || 0;
-      document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs mes pasado";
+      document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
       salesPeriodsCache = data.periods || [];
       const labels = salesPeriodsCache.map(p => {
         const d = new Date(p.periodStart);
         return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
       });
-      const selectedMonthKey = document.getElementById("inputDate").value.slice(0, 7);
-      const colors = salesPeriodsCache.map(p => (p.periodStart || "").slice(0, 7) === selectedMonthKey ? "#059669" : "#a7f3d0");
+      const colors = salesPeriodsCache.map((p, idx) => idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0");
 
       const ctx = document.getElementById("chartExecSales").getContext("2d");
       if (chartExecSalesInstance) chartExecSalesInstance.destroy();
@@ -390,9 +469,8 @@
     }
 
     async function fetchClientsData() {
-      const iso = getISODateStart(document.getElementById("inputDate").value);
-      const tz = encodeURIComponent("America/Buenos_Aires");
-      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/customers?timeUnit=monthly&startDate=\${iso}&timeZone=\${tz}\`, { headers: getHeaders() });
+      const q = getDateQueryParams();
+      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/customers?\${q}\`, { headers: getHeaders() });
       if (res.ok) {
         const d = await res.json();
         allClients = (d.items || []).filter(i => (i.salesAmount || i.amount) > 0);
@@ -448,9 +526,8 @@
     async function fetchProductsPage() {
       if (isLoadingProducts || !hasMoreProducts) return;
       isLoadingProducts = true;
-      const iso = getISODateStart(document.getElementById("inputDate").value);
-      const tz = encodeURIComponent("America/Buenos_Aires");
-      let u = \`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?sort=sales&order=desc&limit=50&timeUnit=monthly&startDate=\${iso}&timeZone=\${tz}\`;
+      const q = getDateQueryParams();
+      let u = \`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?sort=sales&order=desc&limit=50&\${q}\`;
       if (nextProductCursor) u += \`&cursor=\${encodeURIComponent(nextProductCursor)}\`;
       try {
         const res = await fetch(u, { headers: getHeaders() });
@@ -485,7 +562,6 @@
       });
     }
 
-    // PUNTO 1: RENDERIZADO DE FOTOS REALES EN PRODUCTOS
     function renderGlobalProductsTable(items) {
       const b = document.getElementById("productsGlobalTableBody");
       const onlyL = document.getElementById("chkOnlyLosses").checked;
@@ -520,46 +596,17 @@
       });
     }
 
-    // PUNTO 2 & 3: CONTROL DE MODAL, SCROLL LOCK Y BUSCADOR INTERNO
-    function renderModalProductRows(prods, tot) {
-      const tb = document.getElementById("productsTableBody");
-      tb.innerHTML = "";
-      document.getElementById("productRecordCount").textContent = \`\${prods.length} productos\`;
-
-      if (prods.length === 0) {
-        tb.innerHTML = \`<tr><td colspan="6" class="text-center py-8 text-slate-400">Sin productos coincidentes.</td></tr>\`;
-        return;
-      }
-
-      prods.forEach((p, i) => {
-        const amt = p.salesAmount || p.totalSales || 0;
-        const u = p.totalSold || 0;
-        const row = document.createElement("tr");
-        row.className = "hover:bg-slate-50";
-        row.innerHTML = \`
-          <td class="p-2.5 text-slate-400">\${i+1}</td>
-          <td class="p-2.5 font-medium">\${p.productName}</td>
-          <td class="p-2.5 text-center font-bold">\${numberFormatter.format(u)}</td>
-          <td class="p-2.5 text-right">\${currencyFormatter.format(u > 0 ? amt / u : 0)}</td>
-          <td class="p-2.5 text-right font-bold">\${currencyFormatter.format(amt)}</td>
-          <td class="p-2.5 text-right"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">\${tot > 0 ? ((amt/tot)*100).toFixed(1) : 0}%</span></td>
-        \`;
-        tb.appendChild(row);
-      });
-    }
-
     window.openCustomerDetail = async function(contactId, name) {
       document.getElementById("modalClientTitle").textContent = decodeURIComponent(name);
-      document.getElementById("modalPeriodSubtitle").textContent = "Período: " + document.getElementById("inputDate").value;
+      document.getElementById("modalPeriodSubtitle").textContent = dateFilterMode === "custom"
+        ? \`Rango: \${document.getElementById("customStartDate").value} al \${document.getElementById("customEndDate").value}\`
+        : \`Mes: \${selectedMonthDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })\`;
       document.getElementById("productSearchInput").value = "";
-      
-      // Bloquear scroll de la página de fondo
       document.body.classList.add("overflow-hidden");
       document.getElementById("modalDetail").classList.remove("hidden");
 
-      const iso = getISODateStart(document.getElementById("inputDate").value);
-      const tz = encodeURIComponent("America/Buenos_Aires");
-      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?contactId=\${contactId}&sort=units&order=desc&limit=100&timeUnit=monthly&startDate=\${iso}&timeZone=\${tz}\`, { headers: getHeaders() });
+      const q = getDateQueryParams();
+      const res = await fetch(\`https://core-api-gateway.treinta.co/v2/stores/\${storeId}/stats/products/list?contactId=\${contactId}&sort=units&order=desc&limit=100&\${q}\`, { headers: getHeaders() });
       if (res.ok) {
         const d = await res.json();
         currentCustomerProducts = (d.items || []).filter(p => (p.salesAmount || p.totalSales || 0) > 0 || (p.totalSold || 0) > 0);
@@ -571,12 +618,29 @@
       }
     };
 
+    function renderModalProductRows(prods, tot) {
+      const tb = document.getElementById("productsTableBody");
+      tb.innerHTML = "";
+      document.getElementById("productRecordCount").textContent = \`\${prods.length} productos\`;
+      if (prods.length === 0) {
+        tb.innerHTML = \`<tr><td colspan="6" class="text-center py-8 text-slate-400">Sin productos coincidentes.</td></tr>\`;
+        return;
+      }
+      prods.forEach((p, i) => {
+        const amt = p.salesAmount || p.totalSales || 0;
+        const u = p.totalSold || 0;
+        const row = document.createElement("tr");
+        row.className = "hover:bg-slate-50";
+        row.innerHTML = \`<td class="p-2.5 text-slate-400">\${i+1}</td><td class="p-2.5 font-medium">\${p.productName}</td><td class="p-2.5 text-center font-bold">\${u}</td><td class="p-2.5 text-right">\${currencyFormatter.format(u > 0 ? amt / u : 0)}</td><td class="p-2.5 text-right font-bold">\${currencyFormatter.format(amt)}</td><td class="p-2.5 text-right"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">\${tot > 0 ? ((amt/tot)*100).toFixed(1) : 0}%</span></td>\`;
+        tb.appendChild(row);
+      });
+    }
+
     function closeDetailModal() {
       document.getElementById("modalDetail").classList.add("hidden");
       document.body.classList.remove("overflow-hidden");
     }
 
-    // Buscador en vivo de productos del cliente
     document.getElementById("productSearchInput").addEventListener("input", (e) => {
       const term = e.target.value.toLowerCase();
       const filtered = currentCustomerProducts.filter(p => (p.productName || "").toLowerCase().includes(term));
@@ -604,10 +668,8 @@
     document.getElementById("chkOnlyLosses").addEventListener("change", () => renderGlobalProductsTable(allGlobalProducts));
     document.getElementById("prodSearchInput").addEventListener("input", () => renderGlobalProductsTable(allGlobalProducts));
     document.getElementById("searchInput").addEventListener("input", (e) => renderClientsTable(allClients.filter(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))));
-    document.getElementById("inputDate").addEventListener("change", () => syncPresetButtonStyles() || refreshAll());
 
-    // Iniciar
-    setDateInputs();
+    initDateInputs();
     refreshAll();
   <\/script>
 </body>
