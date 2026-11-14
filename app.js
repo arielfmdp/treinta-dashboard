@@ -13,6 +13,9 @@ var activeTab = "clients";
 var dateFilterMode = "monthly";
 var selectedMonthDate = new Date();
 
+// PREFERENCIA DE TAMAÑO DE MINIATURAS: "sm" (2rem), "md" (3rem), "lg" (4rem)
+var currentThumbSize = localStorage.getItem("t_thumb_size") || "sm";
+
 // Estado Clientes y Ventas
 var allClients = [];
 var allGlobalProducts = [];
@@ -56,15 +59,86 @@ function getHeaders() {
   };
 }
 
-function getArgentinaStartISO(dateStr) {
-  return dateStr + "T03:00:00.000Z";
+// --- GESTIÓN DE TAMAÑO DE FOTOS Y VISOR FLOTANTE ZOOM (10rem) ---
+function getThumbDimensions() {
+  if (currentThumbSize === "md") return "w-12 h-12"; // 3rem
+  if (currentThumbSize === "lg") return "w-16 h-16"; // 4rem
+  return "w-8 h-8"; // 2rem (sm por defecto)
 }
 
+function syncThumbSizeButtons() {
+  document.querySelectorAll(".btn-thumb-size").forEach(function(btn) {
+    if (btn.dataset.size === currentThumbSize) {
+      btn.className = "btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold bg-white text-indigo-600 shadow-sm transition";
+    } else {
+      btn.className = "btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition";
+    }
+  });
+}
+
+document.querySelectorAll(".btn-thumb-size").forEach(function(btn) {
+  btn.onclick = function() {
+    currentThumbSize = btn.dataset.size;
+    localStorage.setItem("t_thumb_size", currentThumbSize);
+    syncThumbSizeButtons();
+    if (activeTab === "sales") renderGlobalProductsTable(allGlobalProducts);
+    if (activeTab === "inventory") renderInventoryTable();
+  };
+});
+
+// Control del Visor de Zoom flotante
+function showImgPreview(e, url) {
+  if (!url) return;
+  var preview = document.getElementById("globalImgPreview");
+  var img = document.getElementById("globalImgPreviewSrc");
+  img.src = url;
+  positionPreview(e);
+  preview.classList.remove("hidden");
+  preview.classList.add("flex");
+}
+
+function positionPreview(e) {
+  var preview = document.getElementById("globalImgPreview");
+  var x = e.clientX + 16;
+  var y = e.clientY - 80;
+  if (x + 180 > window.innerWidth) x = e.clientX - 180;
+  if (y < 10) y = 10;
+  if (y + 180 > window.innerHeight) y = window.innerHeight - 190;
+  preview.style.left = x + "px";
+  preview.style.top = y + "px";
+}
+
+function hideImgPreview() {
+  var preview = document.getElementById("globalImgPreview");
+  preview.classList.add("hidden");
+  preview.classList.remove("flex");
+}
+
+function attachHoverPreviewEvents(tableBodyId) {
+  var tb = document.getElementById(tableBodyId);
+  tb.onmouseover = function(e) {
+    if (e.target && e.target.classList.contains("img-previewable")) {
+      showImgPreview(e, e.target.dataset.preview);
+    }
+  };
+  tb.onmousemove = function(e) {
+    if (e.target && e.target.classList.contains("img-previewable")) {
+      positionPreview(e);
+    }
+  };
+  tb.onmouseout = function(e) {
+    if (e.target && e.target.classList.contains("img-previewable")) {
+      hideImgPreview();
+    }
+  };
+}
+
+// Fechas Argentina UTC-3
+function getArgentinaStartISO(dateStr) { return dateStr + "T03:00:00.000Z"; }
 function getArgentinaEndISO(dateStr) {
   var parts = dateStr.split("-").map(Number);
   var nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
-  var nextDayStr = nextDay.toISOString().split("T")[0];
-  return nextDayStr + "T02:59:59.999Z";
+  return nextDay.toISOString().split("T")[0] + "T02:59:59.999Z";
 }
 
 function getDateQueryParams() {
@@ -81,7 +155,7 @@ function getDateQueryParams() {
   }
 }
 
-// --- CONMUTADOR DE PESTAÑAS (3 VISTAS) ---
+// Pestañas
 var tabBtnClients = document.getElementById("tabBtnClients");
 var tabBtnSales = document.getElementById("tabBtnSales");
 var tabBtnInventory = document.getElementById("tabBtnInventory");
@@ -124,8 +198,9 @@ function switchTab(t) {
   }
 }
 
-// --- LÓGICA DE INVENTARIO ---
+// Inventario
 async function initInventoryView() {
+  syncThumbSizeButtons();
   if (!invSummaryData) fetchInventorySummary();
   if (invCategories.length === 0) fetchInventoryCategories();
   if (allInventoryProducts.length === 0) resetAndFetchInventory();
@@ -139,9 +214,7 @@ async function fetchInventorySummary() {
       document.getElementById("invKpiTotalRefs").textContent = numberFormatter.format(invSummaryData.totalReferences || 0);
       document.getElementById("invKpiTotalValue").textContent = currencyFormatter.format(invSummaryData.inventoryValue || 0);
     }
-  } catch(e) {
-    console.error("Error resumen inventario:", e);
-  }
+  } catch(e) { console.error("Error resumen inventario:", e); }
 }
 
 async function fetchInventoryCategories() {
@@ -151,9 +224,7 @@ async function fetchInventoryCategories() {
       invCategories = await res.json();
       renderCategoryPills();
     }
-  } catch(e) {
-    console.error("Error categorías:", e);
-  }
+  } catch(e) { console.error("Error categorías:", e); }
 }
 
 function renderCategoryPills() {
@@ -205,12 +276,8 @@ async function fetchInventoryPage() {
   document.getElementById("invLoadingText").textContent = "Cargando artículos...";
 
   var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=created_at&order=desc";
-  if (invSelectedCategoryId) {
-    url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
-  }
-  if (invSearchTerm) {
-    url += "&search=" + encodeURIComponent(invSearchTerm);
-  }
+  if (invSelectedCategoryId) url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
+  if (invSearchTerm) url += "&search=" + encodeURIComponent(invSearchTerm);
 
   try {
     var res = await fetch(url, { headers: getHeaders() });
@@ -218,25 +285,13 @@ async function fetchInventoryPage() {
       var resp = await res.json();
       var newItems = resp.data || [];
       invTotalItems = resp.total || 0;
-
       allInventoryProducts = allInventoryProducts.concat(newItems);
       invHasMore = (allInventoryProducts.length < invTotalItems) && (newItems.length > 0);
       invCurrentPage++;
-
       renderInventoryTable();
-
-      if (invHasMore) {
-        document.getElementById("invLoadingText").textContent = "Desplázate para cargar más artículos...";
-      } else {
-        document.getElementById("invLoadingText").textContent = "✅ Has llegado al final (" + allInventoryProducts.length + " artículos cargados)";
-      }
+      document.getElementById("invLoadingText").textContent = invHasMore ? "Desplázate para cargar más artículos..." : "✅ Final del inventario (" + allInventoryProducts.length + " artículos)";
     }
-  } catch(e) {
-    console.error("Error al cargar página de inventario:", e);
-    document.getElementById("invLoadingText").textContent = "Error al cargar artículos.";
-  } finally {
-    invIsLoading = false;
-  }
+  } finally { invIsLoading = false; }
 }
 
 function renderInventoryTable() {
@@ -249,25 +304,21 @@ function renderInventoryTable() {
 
   document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
 
-  var inStockCount = 0;
-  var noStockCount = 0;
-  allInventoryProducts.forEach(function(p) {
-    if ((p.stock || 0) > 0) inStockCount++;
-    else noStockCount++;
-  });
+  var inStockCount = 0, noStockCount = 0;
+  allInventoryProducts.forEach(function(p) { if ((p.stock || 0) > 0) inStockCount++; else noStockCount++; });
   document.getElementById("invKpiInStockCount").textContent = inStockCount + " con stock";
   document.getElementById("invKpiNoStockCount").textContent = noStockCount + " sin stock";
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">No se encontraron productos con los filtros seleccionados.</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">No se encontraron productos.</td></tr>';
     return;
   }
 
   body.innerHTML = "";
+  var dim = getThumbDimensions();
+
   filtered.forEach(function(prod, idx) {
-    var price = prod.price || 0;
-    var cost = prod.cost || 0;
-    var stock = prod.stock || 0;
+    var price = prod.price || 0, cost = prod.cost || 0, stock = prod.stock || 0;
     var profit = price - cost;
     var marginPct = price > 0 ? ((profit / price) * 100).toFixed(1) : 0;
     var totalStockValue = cost * (stock > 0 ? stock : 0);
@@ -277,8 +328,8 @@ function renderInventoryTable() {
     tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50 transition-colors";
 
     var imgTag = prod.imageUrl
-      ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img">'
-      : '<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
+      ? '<img src="' + prod.imageUrl + '" data-preview="' + prod.imageUrl + '" class="' + dim + ' rounded-lg object-contain bg-white border border-slate-200 cursor-zoom-in img-previewable" alt="img">'
+      : '<div class="' + dim + ' rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
 
     var stockBadge = stock > 0
       ? '<span class="inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">' + numberFormatter.format(stock) + '</span>'
@@ -314,7 +365,6 @@ function renderInventoryTable() {
   });
 }
 
-// Buscador en inventario con llamada al servidor (debounce de 400ms)
 document.getElementById("invSearchInput").oninput = function(e) {
   clearTimeout(invSearchTimeout);
   var term = e.target.value.trim();
@@ -324,14 +374,11 @@ document.getElementById("invSearchInput").oninput = function(e) {
   }, 400);
 };
 
-// Scroll infinito en inventario
 new IntersectionObserver(function(e) {
-  if (e[0].isIntersecting && activeTab === "inventory" && invHasMore && !invIsLoading) {
-    fetchInventoryPage();
-  }
+  if (e[0].isIntersecting && activeTab === "inventory" && invHasMore && !invIsLoading) fetchInventoryPage();
 }, { threshold: 0.1 }).observe(document.getElementById("invInfiniteScrollTrigger"));
 
-// --- CÓDIGO DE FECHAS Y ANÁLISIS ---
+// Controles y Fechas
 var modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
 var modeCustomBtn = document.getElementById("modeCustomBtn");
 var monthlyControls = document.getElementById("monthlyControls");
@@ -359,12 +406,10 @@ modeCustomBtn.onclick = function() {
 function initDateInputs() {
   var now = new Date();
   selectedMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
-
   var sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 7);
   document.getElementById("customStartDate").value = sevenDaysAgo.toISOString().split("T")[0];
   document.getElementById("customEndDate").value = now.toISOString().split("T")[0];
-
   syncPresetButtonStyles();
 }
 
@@ -502,9 +547,7 @@ async function fetchExecutiveSummary() {
     var rs = await fetch("https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/sales?" + q, { headers: getHeaders() });
     if (rp.ok) renderExecutiveProfit(await rp.json());
     if (rs.ok) renderExecutiveSales(await rs.json());
-  } catch(err) {
-    console.error("Error en resumen ejecutivo:", err);
-  }
+  } catch(err) { console.error("Error ejecutivo:", err); }
 }
 
 function renderExecutiveProfit(data) {
@@ -516,7 +559,6 @@ function renderExecutiveProfit(data) {
   document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
   profitPeriodsCache = data.periods || [];
-
   var labels = profitPeriodsCache.map(function(p) {
     var d = new Date(p.periodStart);
     if (dateFilterMode === "custom" || p.granularity === "day") {
@@ -524,10 +566,7 @@ function renderExecutiveProfit(data) {
     }
     return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
   });
-
-  var colors = profitPeriodsCache.map(function(p, idx) {
-    return idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0";
-  });
+  var colors = profitPeriodsCache.map(function(p, idx) { return idx === profitPeriodsCache.length - 1 ? "#059669" : "#a7f3d0"; });
 
   var ctx = document.getElementById("chartExecProfit").getContext("2d");
   if (chartExecProfitInstance) chartExecProfitInstance.destroy();
@@ -535,33 +574,21 @@ function renderExecutiveProfit(data) {
     type: 'bar',
     data: { labels: labels, datasets: [{ data: profitPeriodsCache.map(function(p){ return p.totalProfit || 0; }), backgroundColor: colors, borderRadius: 3 }] },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
             title: function(items) {
               var p = profitPeriodsCache[items[0].dataIndex];
-              var d = new Date(p.periodStart);
-              return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+              return new Date(p.periodStart).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
             },
-            label: function(c) {
-              return " Ganancia: " + currencyFormatter.format(c.raw);
-            }
+            label: function(c) { return " Ganancia: " + currencyFormatter.format(c.raw); }
           }
         }
       },
-      onClick: function(e, els) {
-        if (els.length) selectMonthFromChart(profitPeriodsCache[els[0].index].periodStart);
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' }, color: '#64748b' }
-        },
-        y: { display: false }
-      }
+      onClick: function(e, els) { if (els.length) selectMonthFromChart(profitPeriodsCache[els[0].index].periodStart); },
+      scales: { x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' } } }, y: { display: false } }
     }
   });
 }
@@ -574,7 +601,6 @@ function renderExecutiveSales(data) {
   document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
 
   salesPeriodsCache = data.periods || [];
-
   var labels = salesPeriodsCache.map(function(p) {
     var d = new Date(p.periodStart);
     if (dateFilterMode === "custom" || p.granularity === "day") {
@@ -582,10 +608,7 @@ function renderExecutiveSales(data) {
     }
     return d.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
   });
-
-  var colors = salesPeriodsCache.map(function(p, idx) {
-    return idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0";
-  });
+  var colors = salesPeriodsCache.map(function(p, idx) { return idx === salesPeriodsCache.length - 1 ? "#059669" : "#a7f3d0"; });
 
   var ctx = document.getElementById("chartExecSales").getContext("2d");
   if (chartExecSalesInstance) chartExecSalesInstance.destroy();
@@ -593,33 +616,21 @@ function renderExecutiveSales(data) {
     type: 'bar',
     data: { labels: labels, datasets: [{ data: salesPeriodsCache.map(function(p){ return p.salesAmount || p.value || 0; }), backgroundColor: colors, borderRadius: 3 }] },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
             title: function(items) {
               var p = salesPeriodsCache[items[0].dataIndex];
-              var d = new Date(p.periodStart);
-              return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+              return new Date(p.periodStart).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
             },
-            label: function(c) {
-              return " Ventas: " + currencyFormatter.format(c.raw);
-            }
+            label: function(c) { return " Ventas: " + currencyFormatter.format(c.raw); }
           }
         }
       },
-      onClick: function(e, els) {
-        if (els.length) selectMonthFromChart(salesPeriodsCache[els[0].index].periodStart);
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' }, color: '#64748b' }
-        },
-        y: { display: false }
-      }
+      onClick: function(e, els) { if (els.length) selectMonthFromChart(salesPeriodsCache[els[0].index].periodStart); },
+      scales: { x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' } } }, y: { display: false } }
     }
   });
 }
@@ -636,9 +647,7 @@ async function fetchClientsData() {
       renderClientsChart(allClients.slice(0, 10));
       renderClientsTable(allClients);
     }
-  } catch(err) {
-    console.error("Error clientes:", err);
-  }
+  } catch(err) { console.error("Error clientes:", err); }
 }
 
 function renderClientsKPIs(items) {
@@ -667,56 +676,18 @@ function renderClientsTable(items) {
   var tot = allClients.reduce(function(a, b) { return a + (b.salesAmount || b.amount || 0); }, 0);
   
   items.forEach(function(item, idx) {
-    var amt = item.salesAmount || item.amount || 0;
-    var cnt = item.salesCount || 0;
+    var amt = item.salesAmount || item.amount || 0, cnt = item.salesCount || 0;
     var pct = tot > 0 ? ((amt / tot) * 100).toFixed(1) : 0;
-    
     var tr = document.createElement("tr");
     tr.className = "hover:bg-slate-50";
 
-    var tdIdx = document.createElement("td");
-    tdIdx.className = "py-3 px-4 text-slate-400";
-    tdIdx.textContent = (idx + 1);
-
-    var tdName = document.createElement("td");
-    tdName.className = "py-3 px-4 font-bold";
-    tdName.textContent = item.name;
-
-    var tdAmt = document.createElement("td");
-    tdAmt.className = "py-3 px-4 text-right font-bold";
-    tdAmt.textContent = currencyFormatter.format(amt);
-
-    var tdCnt = document.createElement("td");
-    tdCnt.className = "py-3 px-4 text-center font-bold";
-    tdCnt.textContent = cnt;
-
-    var tdAvg = document.createElement("td");
-    tdAvg.className = "py-3 px-4 text-right";
-    tdAvg.textContent = currencyFormatter.format(cnt > 0 ? amt / cnt : 0);
-
-    var tdPct = document.createElement("td");
-    tdPct.className = "py-3 px-4 text-right";
-    tdPct.innerHTML = '<span class="px-2 py-0.5 rounded bg-slate-100 font-bold">' + pct + '%</span>';
-
-    var tdAction = document.createElement("td");
-    tdAction.className = "py-3 px-4 text-center";
-    
     var btn = document.createElement("button");
     btn.className = "px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200 transition";
     btn.textContent = "Ver Artículos 📦";
-    btn.onclick = function() {
-      openCustomerDetail(item.id, item.name);
-    };
-    tdAction.appendChild(btn);
+    btn.onclick = function() { openCustomerDetail(item.id, item.name); };
 
-    tr.appendChild(tdIdx);
-    tr.appendChild(tdName);
-    tr.appendChild(tdAmt);
-    tr.appendChild(tdCnt);
-    tr.appendChild(tdAvg);
-    tr.appendChild(tdPct);
-    tr.appendChild(tdAction);
-
+    tr.innerHTML = '<td class="py-3 px-4 text-slate-400">' + (idx + 1) + '</td><td class="py-3 px-4 font-bold">' + item.name + '</td><td class="py-3 px-4 text-right font-bold">' + currencyFormatter.format(amt) + '</td><td class="py-3 px-4 text-center font-bold">' + cnt + '</td><td class="py-3 px-4 text-right">' + currencyFormatter.format(cnt > 0 ? amt / cnt : 0) + '</td><td class="py-3 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold">' + pct + '%</span></td><td class="py-3 px-4 text-center"></td>';
+    tr.querySelector("td:last-child").appendChild(btn);
     body.appendChild(tr);
   });
 }
@@ -745,11 +716,7 @@ async function fetchProductsPage() {
       try { renderProductsChart(allGlobalProducts.slice(0, 10)); } catch(e){}
       renderGlobalProductsTable(allGlobalProducts);
     }
-  } catch(err) {
-    console.error("Error productos:", err);
-  } finally { 
-    isLoadingProducts = false; 
-  }
+  } finally { isLoadingProducts = false; }
 }
 
 function renderProductsKPIs(items) {
@@ -781,15 +748,15 @@ function renderGlobalProductsTable(items) {
   b.innerHTML = "";
   document.getElementById("prodTableRecordCount").textContent = "Mostrando " + filtered.length + " de " + allGlobalProducts.length + " productos";
 
+  var dim = getThumbDimensions();
+
   filtered.forEach(function(prod, idx) {
-    var sales = prod.salesAmount || prod.totalSales || 0;
-    var units = prod.totalSold || 0;
-    var profit = prod.totalProfit || 0;
+    var sales = prod.salesAmount || prod.totalSales || 0, units = prod.totalSold || 0, profit = prod.totalProfit || 0;
     var isLoss = profit < 0;
 
     var imgTag = prod.imageUrl
-      ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img">'
-      : '<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
+      ? '<img src="' + prod.imageUrl + '" data-preview="' + prod.imageUrl + '" class="' + dim + ' rounded-lg object-contain bg-white border border-slate-200 cursor-zoom-in img-previewable" alt="img">'
+      : '<div class="' + dim + ' rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
 
     var tr = document.createElement("tr");
     tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50";
@@ -821,9 +788,7 @@ window.openCustomerDetail = async function(contactId, name) {
       document.getElementById("modalClientTotalSkus").textContent = numberFormatter.format(currentCustomerProducts.length);
       renderModalProductRows(currentCustomerProducts, tot);
     }
-  } catch(err) {
-    console.error("Error detalle cliente:", err);
-  }
+  } catch(err) { console.error("Error detalle cliente:", err); }
 };
 
 function renderModalProductRows(prods, tot) {
@@ -835,8 +800,7 @@ function renderModalProductRows(prods, tot) {
     return;
   }
   prods.forEach(function(p, i) {
-    var amt = p.salesAmount || p.totalSales || 0;
-    var u = p.totalSold || 0;
+    var amt = p.salesAmount || p.totalSales || 0, u = p.totalSold || 0;
     var row = document.createElement("tr");
     row.className = "hover:bg-slate-50";
     row.innerHTML = '<td class="p-2.5 text-slate-400">' + (i+1) + '</td><td class="p-2.5 font-medium">' + p.productName + '</td><td class="p-2.5 text-center font-bold">' + u + '</td><td class="p-2.5 text-right">' + currencyFormatter.format(u > 0 ? amt / u : 0) + '</td><td class="p-2.5 text-right font-bold">' + currencyFormatter.format(amt) + '</td><td class="p-2.5 text-right"><span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">' + (tot > 0 ? ((amt/tot)*100).toFixed(1) : 0) + '%</span></td>';
@@ -883,5 +847,10 @@ document.getElementById("searchInput").oninput = function(e) {
   renderClientsTable(allClients.filter(function(i) { return i.name.toLowerCase().includes(e.target.value.toLowerCase()); }));
 };
 
+// Activar delegación del hover de zoom en ambas tablas
+attachHoverPreviewEvents("productsGlobalTableBody");
+attachHoverPreviewEvents("inventoryTableBody");
+
+syncThumbSizeButtons();
 initDateInputs();
 refreshAll();
