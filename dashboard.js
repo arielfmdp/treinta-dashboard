@@ -66,9 +66,11 @@
         </div>
       </div>
 
+      <!-- 3 PESTAÑAS: CLIENTES | VENTAS | INVENTARIO -->
       <nav class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-        <button id="tabBtnClients" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600">👥 Clientes</button>
-        <button id="tabBtnProducts" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">📦 Productos</button>
+        <button id="tabBtnClients" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600">👥 Clientes</button>
+        <button id="tabBtnSales" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">📈 Ventas</button>
+        <button id="tabBtnInventory" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">📦 Inventario</button>
       </nav>
 
       <div class="flex items-center gap-2">
@@ -84,98 +86,98 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- FILTROS DE PERÍODO -->
-    <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Modo:</span>
-          <div class="inline-flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs font-semibold">
-            <button id="modeMonthlyBtn" class="px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition">Mensual</button>
-            <button id="modeCustomBtn" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">Rango Personalizado</button>
-          </div>
-        </div>
-
-        <!-- MODO MENSUAL -->
-        <div id="monthlyControls" class="flex flex-wrap items-center gap-2">
-          <div class="relative inline-flex items-center bg-slate-100 rounded-lg border border-slate-200 p-0.5">
-            <button id="btnPrevMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition">◀</button>
-            <button id="btnMonthDropdownToggle" class="px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-white rounded transition flex items-center gap-1 capitalize min-w-[130px] justify-center">
-              <span id="lblCurrentPeriod">Cargando...</span>
-              <span class="text-[9px] text-slate-400">▼</span>
-            </button>
-            <button id="btnNextMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition disabled:opacity-30">▶</button>
-            <div id="monthDropdownMenu" class="hidden absolute top-full left-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50">
-              <div class="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 mb-1 border-b">Saltar a un mes:</div>
-              <div id="monthDropdownList" class="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto"></div>
+    <!-- SECCIÓN FILTROS DE PERÍODO (SOLO VISIBLE EN CLIENTES Y VENTAS) -->
+    <div id="analyticsPeriodSection" class="space-y-6">
+      <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Modo:</span>
+            <div class="inline-flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs font-semibold">
+              <button id="modeMonthlyBtn" class="px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition">Mensual</button>
+              <button id="modeCustomBtn" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">Rango Personalizado</button>
             </div>
           </div>
-          <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
+
+          <!-- MODO MENSUAL -->
+          <div id="monthlyControls" class="flex flex-wrap items-center gap-2">
+            <div class="relative inline-flex items-center bg-slate-100 rounded-lg border border-slate-200 p-0.5">
+              <button id="btnPrevMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition">◀</button>
+              <button id="btnMonthDropdownToggle" class="px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-white rounded transition flex items-center gap-1 capitalize min-w-[130px] justify-center">
+                <span id="lblCurrentPeriod">Cargando...</span>
+                <span class="text-[9px] text-slate-400">▼</span>
+              </button>
+              <button id="btnNextMonthStep" class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition disabled:opacity-30">▶</button>
+              <div id="monthDropdownMenu" class="hidden absolute top-full left-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50">
+                <div class="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 mb-1 border-b">Saltar a un mes:</div>
+                <div id="monthDropdownList" class="grid grid-cols-2 gap-1 max-h-56 overflow-y-auto"></div>
+              </div>
+            </div>
+            <button id="btnCurrentMonth" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition">📍 Mes Actual</button>
+          </div>
+
+          <!-- MODO RANGO PERSONALIZADO -->
+          <div id="customControls" class="hidden flex flex-wrap items-center gap-2 text-xs">
+            <div class="flex items-center gap-1">
+              <label for="customStartDate" class="text-slate-500 font-medium">Desde:</label>
+              <input type="date" id="customStartDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+            </div>
+            <div class="flex items-center gap-1">
+              <label for="customEndDate" class="text-slate-500 font-medium">Hasta:</label>
+              <input type="date" id="customEndDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+            </div>
+            <button id="btnApplyCustomRange" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
+              Filtrar
+            </button>
+            <div class="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button id="btnPreset3M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 3M</button>
+              <button id="btnPreset6M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 6M</button>
+              <button id="btnPresetYTD" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Este Año (YTD)</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- SECCIÓN EJECUTIVA -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tu ganancia</h3>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-amber-500 text-xl font-bold">🪙</span>
+              <span id="execProfitValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span>
+            </div>
+            <div class="mt-2">
+              <span id="execProfitTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
+            </div>
+          </div>
+          <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecProfit"></canvas></div>
+          <div class="pt-3 border-t border-slate-100 grid grid-cols-3 text-xs">
+            <div><p class="text-slate-400 font-medium text-[11px]">Vendiste</p><p id="execProfitVendiste" class="font-extrabold text-slate-800">$ 0</p></div>
+            <div><p class="text-slate-400 font-medium text-[11px]">Costo</p><p id="execProfitCosto" class="font-extrabold text-slate-800">$ 0</p></div>
+            <div class="text-right"><p class="text-slate-400 font-medium text-[11px]">Margen</p><p id="execProfitMargen" class="font-extrabold text-slate-800">0%</p></div>
+          </div>
         </div>
 
-		<!-- MODO RANGO PERSONALIZADO CON BOTONES RÁPIDOS -->
-        <div id="customControls" class="hidden flex flex-wrap items-center gap-2 text-xs">
-          <div class="flex items-center gap-1">
-            <label for="customStartDate" class="text-slate-500 font-medium">Desde:</label>
-            <input type="date" id="customStartDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tus ventas</h3>
+            <div class="mt-1"><span id="execSalesValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span></div>
+            <div class="mt-2">
+              <span id="execSalesTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
+            </div>
           </div>
-          <div class="flex items-center gap-1">
-            <label for="customEndDate" class="text-slate-500 font-medium">Hasta:</label>
-            <input type="date" id="customEndDate" class="border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
-          </div>
-          <button id="btnApplyCustomRange" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-sm">
-            Filtrar
-          </button>
-
-          <!-- Botones de Rango Rápido -->
-          <div class="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-            <button id="btnPreset3M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 3M</button>
-            <button id="btnPreset6M" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Últimos 6M</button>
-            <button id="btnPresetYTD" type="button" class="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded text-[11px] border border-slate-200 transition">Este Año (YTD)</button>
+          <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecSales"></canvas></div>
+          <div class="pt-3 border-t border-slate-100 flex justify-between items-end text-xs">
+            <div><p class="text-slate-400 font-medium text-[11px]">Unidades vendidas</p><p id="execSalesTotalUnits" class="font-extrabold text-emerald-600 text-sm">0</p></div>
+            <div class="text-right"><p class="text-slate-400 font-medium text-[11px]">Promedio de venta</p><p id="execSalesAvgTicket" class="font-extrabold text-slate-800 text-sm">$ 0</p></div>
           </div>
         </div>
+      </section>
+    </div>
 
-      </div>
-    </section>
-
-    <!-- SECCIÓN EJECUTIVA -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
-        <div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tu ganancia</h3>
-          <div class="flex items-center gap-2 mt-1">
-            <span class="text-amber-500 text-xl font-bold">🪙</span>
-            <span id="execProfitValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span>
-          </div>
-          <div class="mt-2">
-            <span id="execProfitTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
-          </div>
-        </div>
-        <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecProfit"></canvas></div>
-        <div class="pt-3 border-t border-slate-100 grid grid-cols-3 text-xs">
-          <div><p class="text-slate-400 font-medium text-[11px]">Vendiste</p><p id="execProfitVendiste" class="font-extrabold text-slate-800">$ 0</p></div>
-          <div><p class="text-slate-400 font-medium text-[11px]">Costo</p><p id="execProfitCosto" class="font-extrabold text-slate-800">$ 0</p></div>
-          <div class="text-right"><p class="text-slate-400 font-medium text-[11px]">Margen</p><p id="execProfitMargen" class="font-extrabold text-slate-800">0%</p></div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
-        <div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Tus ventas</h3>
-          <div class="mt-1"><span id="execSalesValue" class="text-2xl sm:text-3xl font-extrabold text-slate-900">$ 0</span></div>
-          <div class="mt-2">
-            <span id="execSalesTrend" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">↑ +0% vs anterior</span>
-          </div>
-        </div>
-        <div class="my-4 h-24 w-full cursor-pointer relative"><canvas id="chartExecSales"></canvas></div>
-        <div class="pt-3 border-t border-slate-100 flex justify-between items-end text-xs">
-          <div><p class="text-slate-400 font-medium text-[11px]">Unidades vendidas</p><p id="execSalesTotalUnits" class="font-extrabold text-emerald-600 text-sm">0</p></div>
-          <div class="text-right"><p class="text-slate-400 font-medium text-[11px]">Promedio de venta</p><p id="execSalesAvgTicket" class="font-extrabold text-slate-800 text-sm">$ 0</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VISTA CLIENTES -->
+    <!-- ==================== VISTA 1: CLIENTES ==================== -->
     <div id="viewClients" class="space-y-6">
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Total Facturado</p><h3 id="kpiTotalSales" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3></div>
@@ -198,15 +200,15 @@
       </section>
     </div>
 
-    <!-- VISTA PRODUCTOS -->
+    <!-- ==================== VISTA 2: VENTAS POR ARTÍCULO ==================== -->
     <div id="viewProducts" class="space-y-6 hidden">
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Facturado Artículos</p><h3 id="kpiProdTotalSales" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3></div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Unidades Totales</p><h3 id="kpiProdTotalUnits" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Ganancia Bruta Est.</p><h3 id="kpiProdTotalProfit" class="text-2xl font-extrabold text-indigo-600 mt-1">$ 0</h3></div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Artículos Listados</p><h3 id="kpiProdTotalSkus" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Artículos Vendidos</p><h3 id="kpiProdTotalSkus" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
       </section>
-      <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Productos</h2><div class="h-80 w-full"><canvas id="topProductsChart"></canvas></div></section>
+      <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Productos Más Vendidos</h2><div class="h-80 w-full"><canvas id="topProductsChart"></canvas></div></section>
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-4 border-b flex justify-between items-center gap-3">
           <p class="text-xs text-slate-500 font-bold" id="prodTableRecordCount">0 productos</p>
@@ -222,6 +224,76 @@
           </table>
         </div>
         <div id="infiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500"><span id="infiniteLoadingText">Desplázate para cargar más...</span></div>
+      </section>
+    </div>
+
+    <!-- ==================== VISTA 3: INVENTARIO / CATÁLOGO ==================== -->
+    <div id="viewInventory" class="space-y-6 hidden">
+      <!-- Tarjetas de Inventario -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Total de Referencias</p>
+          <h3 id="invKpiTotalRefs" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">Artículos dados de alta</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Costo Total de Inventario</p>
+          <h3 id="invKpiTotalValue" class="text-2xl font-extrabold text-indigo-600 mt-1">$ 0</h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">Capital en stock activo</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm sm:col-span-2 lg:col-span-1">
+          <p class="text-xs uppercase text-slate-400 font-bold">Estado de Stock</p>
+          <div class="flex items-center gap-3 mt-1.5">
+            <span id="invKpiInStockCount" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">0 con stock</span>
+            <span id="invKpiNoStockCount" class="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">0 sin stock</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabla y Filtros de Inventario -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-3">
+        <!-- Buscador Superior -->
+        <div class="p-4 border-b flex flex-wrap justify-between items-center gap-3">
+          <div class="w-full sm:w-80">
+            <input type="text" id="invSearchInput" placeholder="🔍 Buscar por nombre o SKU..." class="w-full border rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <p class="text-xs text-slate-500 font-semibold" id="invTableCount">Cargando inventario...</p>
+        </div>
+
+        <!-- Carrusel / Píldoras de Categorías -->
+        <div class="px-4 pb-2 overflow-x-auto">
+          <div id="invCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
+            <button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
+            <button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Sin stock</button>
+            <!-- Las demás categorías se insertan dinámicamente aquí -->
+          </div>
+        </div>
+
+        <!-- Tabla de Inventario -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b">
+                <th class="py-3 px-3">#</th>
+                <th class="py-3 px-3">Foto</th>
+                <th class="py-3 px-3">Producto / SKU</th>
+                <th class="py-3 px-3">Categoría</th>
+                <th class="py-3 px-3 text-right">Precio</th>
+                <th class="py-3 px-3 text-right">Costo</th>
+                <th class="py-3 px-3 text-center">Stock</th>
+                <th class="py-3 px-3 text-right">Ganancia</th>
+                <th class="py-3 px-3 text-right">Margen</th>
+                <th class="py-3 px-3 text-right">Total Valor</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <!-- Scroll Infinito de Inventario -->
+        <div id="invInfiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500">
+          <span id="invLoadingText">Desplázate para cargar más artículos...</span>
+        </div>
       </section>
     </div>
 
@@ -260,10 +332,11 @@
     var refreshToken = ${JSON.stringify(refreshToken)};
     var storeId = ${JSON.stringify(storeId)};
 
+    var activeTab = "clients";
     var dateFilterMode = "monthly";
     var selectedMonthDate = new Date();
 
-    var activeTab = "clients";
+    // Estado Clientes y Ventas
     var allClients = [];
     var allGlobalProducts = [];
     var currentCustomerProducts = [];
@@ -273,6 +346,19 @@
     var profitPeriodsCache = [];
     var salesPeriodsCache = [];
 
+    // Estado Inventario
+    var invSummaryData = null;
+    var invCategories = [];
+    var allInventoryProducts = [];
+    var invCurrentPage = 1;
+    var invTotalItems = 0;
+    var invIsLoading = false;
+    var invHasMore = true;
+    var invSelectedCategoryId = "";
+    var invFilterOnlyNoStock = false;
+    var invSearchTerm = "";
+    var invSearchTimeout = null;
+
     var chartClientsInstance = null;
     var chartProductsInstance = null;
     var chartExecProfitInstance = null;
@@ -281,7 +367,6 @@
     var currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
     var numberFormatter = new Intl.NumberFormat('es-AR');
 
-    // Botón Salir
     document.getElementById("btnCloseDashboard").onclick = function() {
       window.parent.document.getElementById("treinta-dashboard-overlay").remove();
     };
@@ -318,7 +403,258 @@
       }
     }
 
-    // Selector de Modo
+    // --- CONMUTADOR DE PESTAÑAS (3 VISTAS) ---
+    var tabBtnClients = document.getElementById("tabBtnClients");
+    var tabBtnSales = document.getElementById("tabBtnSales");
+    var tabBtnInventory = document.getElementById("tabBtnInventory");
+    var analyticsPeriodSection = document.getElementById("analyticsPeriodSection");
+    var viewClients = document.getElementById("viewClients");
+    var viewProducts = document.getElementById("viewProducts");
+    var viewInventory = document.getElementById("viewInventory");
+
+    tabBtnClients.onclick = function() { switchTab("clients"); };
+    tabBtnSales.onclick = function() { switchTab("sales"); };
+    tabBtnInventory.onclick = function() { switchTab("inventory"); };
+
+    function switchTab(t) {
+      activeTab = t;
+      [tabBtnClients, tabBtnSales, tabBtnInventory].forEach(function(btn) {
+        btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all";
+      });
+
+      if (t === "clients") {
+        tabBtnClients.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
+        analyticsPeriodSection.classList.remove("hidden");
+        viewClients.classList.remove("hidden");
+        viewProducts.classList.add("hidden");
+        viewInventory.classList.add("hidden");
+        if (allClients.length === 0) fetchClientsData();
+      } else if (t === "sales") {
+        tabBtnSales.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
+        analyticsPeriodSection.classList.remove("hidden");
+        viewProducts.classList.remove("hidden");
+        viewClients.classList.add("hidden");
+        viewInventory.classList.add("hidden");
+        if (allGlobalProducts.length === 0) resetAndFetchProducts();
+      } else if (t === "inventory") {
+        tabBtnInventory.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
+        analyticsPeriodSection.classList.add("hidden"); // Oculta selector de fechas en inventario
+        viewInventory.classList.remove("hidden");
+        viewClients.classList.add("hidden");
+        viewProducts.classList.add("hidden");
+        initInventoryView();
+      }
+    }
+
+    // --- LÓGICA DE INVENTARIO ---
+    async function initInventoryView() {
+      if (!invSummaryData) fetchInventorySummary();
+      if (invCategories.length === 0) fetchInventoryCategories();
+      if (allInventoryProducts.length === 0) resetAndFetchInventory();
+    }
+
+    async function fetchInventorySummary() {
+      try {
+        var res = await fetch("https://core-api-gateway.treinta.co/inventory/summary/" + storeId, { headers: getHeaders() });
+        if (res.ok) {
+          invSummaryData = await res.json();
+          document.getElementById("invKpiTotalRefs").textContent = numberFormatter.format(invSummaryData.totalReferences || 0);
+          document.getElementById("invKpiTotalValue").textContent = currencyFormatter.format(invSummaryData.inventoryValue || 0);
+        }
+      } catch(e) {
+        console.error("Error resumen inventario:", e);
+      }
+    }
+
+    async function fetchInventoryCategories() {
+      try {
+        var res = await fetch("https://api.prod.treinta.co/categories/" + storeId, { headers: getHeaders() });
+        if (res.ok) {
+          invCategories = await res.json();
+          renderCategoryPills();
+        }
+      } catch(e) {
+        console.error("Error categorías:", e);
+      }
+    }
+
+    function renderCategoryPills() {
+      var container = document.getElementById("invCategoryPillsContainer");
+      // Dejar los 2 fijos (Ver todos y Sin stock)
+      container.innerHTML = '<button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold ' + (!invSelectedCategoryId && !invFilterOnlyNoStock ? 'bg-amber-400 text-slate-900 shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + ' transition">Ver todos</button>' +
+                            '<button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold ' + (invFilterOnlyNoStock ? 'bg-amber-400 text-slate-900 shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + ' transition">Sin stock</button>';
+
+      document.getElementById("pillCatAll").onclick = function() {
+        invSelectedCategoryId = "";
+        invFilterOnlyNoStock = false;
+        renderCategoryPills();
+        resetAndFetchInventory();
+      };
+
+      document.getElementById("pillCatNoStock").onclick = function() {
+        invFilterOnlyNoStock = true;
+        invSelectedCategoryId = "";
+        renderCategoryPills();
+        resetAndFetchInventory();
+      };
+
+      invCategories.forEach(function(cat) {
+        if (!cat.name) return;
+        var btn = document.createElement("button");
+        var isActive = invSelectedCategoryId === cat.id;
+        btn.className = "px-3 py-1 rounded-lg font-semibold transition " + (isActive ? "bg-amber-400 text-slate-900 font-bold shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+        btn.textContent = cat.name;
+        btn.onclick = function() {
+          invSelectedCategoryId = cat.id;
+          invFilterOnlyNoStock = false;
+          renderCategoryPills();
+          resetAndFetchInventory();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function resetAndFetchInventory() {
+      allInventoryProducts = [];
+      invCurrentPage = 1;
+      invHasMore = true;
+      document.getElementById("inventoryTableBody").innerHTML = '<tr><td colspan="10" class="text-center py-8 text-indigo-600 font-medium">Cargando inventario...</td></tr>';
+      fetchInventoryPage();
+    }
+
+    async function fetchInventoryPage() {
+      if (invIsLoading || !invHasMore) return;
+      invIsLoading = true;
+      document.getElementById("invLoadingText").textContent = "Cargando artículos...";
+
+      var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=created_at&order=desc";
+      if (invSelectedCategoryId) {
+        url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
+      }
+      if (invSearchTerm) {
+        url += "&search=" + encodeURIComponent(invSearchTerm);
+      }
+
+      try {
+        var res = await fetch(url, { headers: getHeaders() });
+        if (res.ok) {
+          var resp = await res.json();
+          var newItems = resp.data || [];
+          invTotalItems = resp.total || 0;
+
+          allInventoryProducts = allInventoryProducts.concat(newItems);
+          invHasMore = (allInventoryProducts.length < invTotalItems) && (newItems.length > 0);
+          invCurrentPage++;
+
+          renderInventoryTable();
+
+          if (invHasMore) {
+            document.getElementById("invLoadingText").textContent = "Desplázate para cargar más artículos...";
+          } else {
+            document.getElementById("invLoadingText").textContent = "✅ Has llegado al final (" + allInventoryProducts.length + " artículos cargados)";
+          }
+        }
+      } catch(e) {
+        console.error("Error al cargar página de inventario:", e);
+        document.getElementById("invLoadingText").textContent = "Error al cargar artículos.";
+      } finally {
+        invIsLoading = false;
+      }
+    }
+
+    function renderInventoryTable() {
+      var body = document.getElementById("inventoryTableBody");
+      var filtered = allInventoryProducts;
+
+      if (invFilterOnlyNoStock) {
+        filtered = filtered.filter(function(p) { return (p.stock || 0) <= 0; });
+      }
+
+      document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
+
+      var inStockCount = 0;
+      var noStockCount = 0;
+      allInventoryProducts.forEach(function(p) {
+        if ((p.stock || 0) > 0) inStockCount++;
+        else noStockCount++;
+      });
+      document.getElementById("invKpiInStockCount").textContent = inStockCount + " con stock";
+      document.getElementById("invKpiNoStockCount").textContent = noStockCount + " sin stock";
+
+      if (filtered.length === 0) {
+        body.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">No se encontraron productos con los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = "";
+      filtered.forEach(function(prod, idx) {
+        var price = prod.price || 0;
+        var cost = prod.cost || 0;
+        var stock = prod.stock || 0;
+        var profit = price - cost;
+        var marginPct = price > 0 ? ((profit / price) * 100).toFixed(1) : 0;
+        var totalStockValue = cost * (stock > 0 ? stock : 0);
+        var isLoss = profit < 0;
+
+        var tr = document.createElement("tr");
+        tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50 transition-colors";
+
+        var imgTag = prod.imageUrl
+          ? '<img src="' + prod.imageUrl + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200" alt="img">'
+          : '<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
+
+        var stockBadge = stock > 0
+          ? '<span class="inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">' + numberFormatter.format(stock) + '</span>'
+          : '<span class="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">' + numberFormatter.format(stock) + '</span>';
+
+        var profitCell = isLoss
+          ? '<span class="font-bold text-rose-600">⚠️ ' + currencyFormatter.format(profit) + '</span>'
+          : '<span class="font-semibold text-slate-700">' + currencyFormatter.format(profit) + '</span>';
+
+        var marginBadge = isLoss
+          ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">' + marginPct + '%</span>'
+          : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">' + marginPct + '%</span>';
+
+        var catBadge = prod.categoryName
+          ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[10px]">' + prod.categoryName + '</span>'
+          : '<span class="text-slate-300 italic text-[11px]">-</span>';
+
+        tr.innerHTML = '<td class="py-2.5 px-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
+                       '<td class="py-2.5 px-3">' + imgTag + '</td>' +
+                       '<td class="py-2.5 px-3 font-medium text-slate-800">' +
+                         '<div>' + (prod.name || "Sin Nombre") + '</div>' +
+                         (prod.sku ? '<div class="text-[10px] text-slate-400 font-mono">SKU: ' + prod.sku + '</div>' : '') +
+                       '</td>' +
+                       '<td class="py-2.5 px-3">' + catBadge + '</td>' +
+                       '<td class="py-2.5 px-3 text-right font-bold text-slate-900">' + currencyFormatter.format(price) + '</td>' +
+                       '<td class="py-2.5 px-3 text-right text-slate-600">' + currencyFormatter.format(cost) + '</td>' +
+                       '<td class="py-2.5 px-3 text-center">' + stockBadge + '</td>' +
+                       '<td class="py-2.5 px-3 text-right">' + profitCell + '</td>' +
+                       '<td class="py-2.5 px-3 text-right">' + marginBadge + '</td>' +
+                       '<td class="py-2.5 px-3 text-right font-semibold text-slate-700">' + currencyFormatter.format(totalStockValue) + '</td>';
+
+        body.appendChild(tr);
+      });
+    }
+
+    // Buscador en inventario con llamada al servidor (debounce de 400ms)
+    document.getElementById("invSearchInput").oninput = function(e) {
+      clearTimeout(invSearchTimeout);
+      var term = e.target.value.trim();
+      invSearchTimeout = setTimeout(function() {
+        invSearchTerm = term;
+        resetAndFetchInventory();
+      }, 400);
+    };
+
+    // Scroll infinito en inventario
+    new IntersectionObserver(function(e) {
+      if (e[0].isIntersecting && activeTab === "inventory" && invHasMore && !invIsLoading) {
+        fetchInventoryPage();
+      }
+    }, { threshold: 0.1 }).observe(document.getElementById("invInfiniteScrollTrigger"));
+
+    // --- CÓDIGO DE FECHAS Y ANÁLISIS ---
     var modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
     var modeCustomBtn = document.getElementById("modeCustomBtn");
     var monthlyControls = document.getElementById("monthlyControls");
@@ -338,7 +674,7 @@
       dateFilterMode = "custom";
       modeCustomBtn.className = "px-3 py-1 rounded-md bg-white text-indigo-600 shadow-sm font-bold transition";
       modeMonthlyBtn.className = "px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition";
-      monthlyControls.classList.add("hidden");
+      monthlyControls.classList.remove("hidden");
       customControls.classList.remove("hidden");
       refreshAll();
     };
@@ -379,7 +715,6 @@
 
     document.getElementById("btnApplyCustomRange").onclick = function() { refreshAll(); };
 
-	// --- LÓGICA DE BOTONES PREDEFINIDOS ---
     function applyPresetRange(start, end) {
       document.getElementById("customStartDate").value = start.toISOString().split("T")[0];
       document.getElementById("customEndDate").value = end.toISOString().split("T")[0];
@@ -402,21 +737,10 @@
 
     document.getElementById("btnPresetYTD").onclick = function() {
       var now = new Date();
-      var start = new Date(now.getFullYear(), 0, 1); // 1 de Enero del año actual
+      var start = new Date(now.getFullYear(), 0, 1);
       applyPresetRange(start, now);
     };
 
-    // --- CERRAR MODAL Y MENÚ CON LA TECLA ESC ---
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "Escape" || e.keyCode === 27) {
-        closeDetailModal();
-        if (monthDropdownMenu) {
-          monthDropdownMenu.classList.add("hidden");
-        }
-      }
-    });
-	
-    // Menú flotante de meses
     var btnMonthDropdownToggle = document.getElementById("btnMonthDropdownToggle");
     var monthDropdownMenu = document.getElementById("monthDropdownMenu");
     var monthDropdownList = document.getElementById("monthDropdownList");
@@ -479,6 +803,13 @@
       }
     });
 
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        closeDetailModal();
+        if (monthDropdownMenu) monthDropdownMenu.classList.add("hidden");
+      }
+    });
+
     function selectMonthFromChart(iso) {
       if (dateFilterMode === "custom") return;
       var d = new Date(iso);
@@ -487,28 +818,6 @@
       refreshAll();
     }
 
-    // Pestañas
-    document.getElementById("tabBtnClients").onclick = function() { switchTab("clients"); };
-    document.getElementById("tabBtnProducts").onclick = function() { switchTab("products"); };
-
-    function switchTab(t) {
-      activeTab = t;
-      if (t === "clients") {
-        document.getElementById("tabBtnClients").className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
-        document.getElementById("tabBtnProducts").className = "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all";
-        document.getElementById("viewClients").classList.remove("hidden");
-        document.getElementById("viewProducts").classList.add("hidden");
-        if (allClients.length === 0) fetchClientsData();
-      } else {
-        document.getElementById("tabBtnProducts").className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
-        document.getElementById("tabBtnClients").className = "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all";
-        document.getElementById("viewProducts").classList.remove("hidden");
-        document.getElementById("viewClients").classList.add("hidden");
-        if (allGlobalProducts.length === 0) resetAndFetchProducts();
-      }
-    }
-
-    // Consultas
     async function fetchExecutiveSummary() {
       var q = getDateQueryParams();
       try {
@@ -572,12 +881,7 @@
           scales: {
             x: {
               grid: { display: false },
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 8,
-                font: { size: 9, weight: 'bold' },
-                color: '#64748b'
-              }
+              ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' }, color: '#64748b' }
             },
             y: { display: false }
           }
@@ -635,12 +939,7 @@
           scales: {
             x: {
               grid: { display: false },
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 8,
-                font: { size: 9, weight: 'bold' },
-                color: '#64748b'
-              }
+              ticks: { autoSkip: true, maxTicksLimit: 8, font: { size: 9, weight: 'bold' }, color: '#64748b' }
             },
             y: { display: false }
           }
@@ -684,7 +983,6 @@
       });
     }
 
-    // PUNTO CLAVE: TABLA DE CLIENTES SIN COMILLAS EN LÍNEA 404
     function renderClientsTable(items) {
       var body = document.getElementById("clientsTableBody");
       body.innerHTML = "";
@@ -726,7 +1024,6 @@
         var tdAction = document.createElement("td");
         tdAction.className = "py-3 px-4 text-center";
         
-        // Botón creado como nodo DOM: libre de errores de comillas
         var btn = document.createElement("button");
         btn.className = "px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded text-[11px] border border-indigo-200 transition";
         btn.textContent = "Ver Artículos 📦";
@@ -889,13 +1186,17 @@
     };
 
     new IntersectionObserver(function(e) {
-      if (e[0].isIntersecting && activeTab === "products" && hasMoreProducts && !isLoadingProducts) fetchProductsPage();
+      if (e[0].isIntersecting && activeTab === "sales" && hasMoreProducts && !isLoadingProducts) fetchProductsPage();
     }, { threshold: 0.1 }).observe(document.getElementById("infiniteScrollTrigger"));
 
     function refreshAll() {
-      fetchExecutiveSummary();
-      if (activeTab === "clients") fetchClientsData();
-      else resetAndFetchProducts();
+      if (activeTab === "inventory") {
+        resetAndFetchInventory();
+      } else {
+        fetchExecutiveSummary();
+        if (activeTab === "clients") fetchClientsData();
+        else resetAndFetchProducts();
+      }
     }
 
     document.getElementById("btnRefresh").onclick = refreshAll;
