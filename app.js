@@ -25,6 +25,10 @@ var isLoadingProducts = false;
 var hasMoreProducts = true;
 var profitPeriodsCache = [];
 var salesPeriodsCache = [];
+var salesSelectedCategoryId = "";
+var salesSortField = "sales"; // "sales", "profit", o "units"
+var salesSortOrder = "desc";  // "desc" o "asc"
+var salesCategoriesLoaded = false;
 
 // Estado Inventario
 var invSummaryData = null;
@@ -187,6 +191,7 @@ function switchTab(t) {
     viewProducts.classList.remove("hidden");
     viewClients.classList.add("hidden");
     viewInventory.classList.add("hidden");
+    initSalesCategories();
     if (allGlobalProducts.length === 0) resetAndFetchProducts();
   } else if (t === "inventory") {
     tabBtnInventory.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
@@ -703,8 +708,16 @@ async function fetchProductsPage() {
   if (isLoadingProducts || !hasMoreProducts) return;
   isLoadingProducts = true;
   var q = getDateQueryParams();
-  var u = "https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/products/list?sort=sales&order=desc&limit=50&" + q;
+  
+  // Incluye el orden seleccionado (sales, profit o units) y el sentido (asc o desc)
+  var u = "https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/products/list?sort=" + salesSortField + "&order=" + salesSortOrder + "&limit=50&" + q;
+  
+  // Filtro de categoría en ventas si hay una seleccionada
+  if (salesSelectedCategoryId) {
+    u += "&categoryId%5B%5D=" + encodeURIComponent(salesSelectedCategoryId);
+  }
   if (nextProductCursor) u += "&cursor=" + encodeURIComponent(nextProductCursor);
+  
   try {
     var res = await fetch(u, { headers: getHeaders() });
     if (res.ok) {
@@ -716,7 +729,11 @@ async function fetchProductsPage() {
       try { renderProductsChart(allGlobalProducts.slice(0, 10)); } catch(e){}
       renderGlobalProductsTable(allGlobalProducts);
     }
-  } finally { isLoadingProducts = false; }
+  } catch(err) {
+    console.error("Error productos ventas:", err);
+  } finally { 
+    isLoadingProducts = false; 
+  }
 }
 
 function renderProductsKPIs(items) {
@@ -839,6 +856,75 @@ function refreshAll() {
     else resetAndFetchProducts();
   }
 }
+
+// --- PÍLDORAS DE CATEGORÍAS EN VENTAS ---
+async function initSalesCategories() {
+  if (salesCategoriesLoaded) return;
+  if (invCategories.length === 0) {
+    try {
+      var res = await fetch("https://api.prod.treinta.co/categories/" + storeId, { headers: getHeaders() });
+      if (res.ok) invCategories = await res.json();
+    } catch(e) {}
+  }
+  renderSalesCategoryPills();
+  salesCategoriesLoaded = true;
+}
+
+function renderSalesCategoryPills() {
+  var container = document.getElementById("salesCategoryPillsContainer");
+  container.innerHTML = '<button id="pillSalesCatAll" class="px-3 py-1 rounded-lg font-bold ' + (!salesSelectedCategoryId ? 'bg-amber-400 text-slate-900 shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + ' transition">Ver todos</button>';
+
+  document.getElementById("pillSalesCatAll").onclick = function() {
+    salesSelectedCategoryId = "";
+    renderSalesCategoryPills();
+    resetAndFetchProducts();
+  };
+
+  invCategories.forEach(function(cat) {
+    if (!cat.name) return;
+    var btn = document.createElement("button");
+    var isActive = salesSelectedCategoryId === cat.id;
+    btn.className = "px-3 py-1 rounded-lg font-semibold transition " + (isActive ? "bg-amber-400 text-slate-900 font-bold shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+    btn.textContent = cat.name;
+    btn.onclick = function() {
+      salesSelectedCategoryId = cat.id;
+      renderSalesCategoryPills();
+      resetAndFetchProducts();
+    };
+    container.appendChild(btn);
+  });
+}
+
+// --- ORDENAMIENTO AL HACER CLIC EN LOS ENCABEZADOS ---
+function handleSalesSort(field) {
+  if (salesSortField === field) {
+    // Alterna entre descendente y ascendente
+    salesSortOrder = salesSortOrder === "desc" ? "asc" : "desc";
+  } else {
+    salesSortField = field;
+    salesSortOrder = "desc"; // Por defecto mayor a menor
+  }
+  updateSortIcons();
+  resetAndFetchProducts();
+}
+
+function updateSortIcons() {
+  var iconMap = { sales: "iconSortSales", profit: "iconSortProfit", units: "iconSortUnits" };
+  ["sales", "profit", "units"].forEach(function(f) {
+    var iconEl = document.getElementById(iconMap[f]);
+    if (f === salesSortField) {
+      iconEl.className = "text-indigo-600 font-bold ml-0.5";
+      iconEl.textContent = salesSortOrder === "desc" ? "↓" : "↑";
+    } else {
+      iconEl.className = "text-slate-300 ml-0.5 font-bold";
+      iconEl.textContent = "↕";
+    }
+  });
+}
+
+document.getElementById("thSortUnits").onclick = function() { handleSalesSort("units"); };
+document.getElementById("thSortSales").onclick = function() { handleSalesSort("sales"); };
+document.getElementById("thSortProfit").onclick = function() { handleSalesSort("profit"); };
 
 document.getElementById("btnRefresh").onclick = refreshAll;
 document.getElementById("chkOnlyLosses").onchange = function() { renderGlobalProductsTable(allGlobalProducts); };

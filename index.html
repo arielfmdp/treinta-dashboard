@@ -168,11 +168,12 @@
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Artículos Vendidos</p><h3 id="kpiProdTotalSkus" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
       </section>
       <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Productos Más Vendidos</h2><div class="h-80 w-full"><canvas id="topProductsChart"></canvas></div></section>
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- TABLA DE VENTAS CON PÍLDORAS DE CATEGORÍAS Y ORDENAMIENTO -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-2">
         <div class="p-4 border-b flex flex-wrap justify-between items-center gap-3">
           <p class="text-xs text-slate-500 font-bold" id="prodTableRecordCount">0 productos</p>
           <div class="flex flex-wrap items-center gap-2">
-            <!-- SELECTOR DE TAMAÑO DE FOTOS (VENTAS) -->
+            <!-- SELECTOR DE TAMAÑO DE FOTOS -->
             <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs mr-1">
               <span class="text-[10px] font-bold text-slate-400 px-1.5 uppercase select-none">Fotos:</span>
               <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold transition" data-size="sm">S</button>
@@ -184,9 +185,44 @@
             <input type="text" id="prodSearchInput" placeholder="Filtrar producto..." class="border rounded-lg px-3 py-1.5 text-xs w-64">
           </div>
         </div>
+
+        <!-- PÍLDORAS DE CATEGORÍAS EN VENTAS -->
+        <div class="px-4 pb-1 overflow-x-auto">
+          <div id="salesCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
+            <button id="pillSalesCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
+            <!-- Las demás categorías se cargan dinámicamente aquí -->
+          </div>
+        </div>
+
+        <!-- TABLA CON ENCABEZADOS CLICKEABLES PARA ORDENAR -->
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
-            <thead><tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b"><th class="py-3 px-4">#</th><th class="py-3 px-4">Foto</th><th class="py-3 px-4">Producto</th><th class="py-3 px-4 text-center">Unidades</th><th class="py-3 px-4 text-right">Precio Prom.</th><th class="py-3 px-4 text-right">Ventas ($)</th><th class="py-3 px-4 text-right">Ganancia ($)</th><th class="py-3 px-4 text-right">Margen</th></tr></thead>
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
+                <th class="py-3 px-4">#</th>
+                <th class="py-3 px-4">Foto</th>
+                <th class="py-3 px-4">Producto</th>
+                
+                <!-- ENCABEZADO ORDENABLE: UNIDADES -->
+                <th id="thSortUnits" class="py-3 px-4 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por unidades">
+                  Unidades <span id="iconSortUnits" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                </th>
+                
+                <th class="py-3 px-4 text-right">Precio Prom.</th>
+                
+                <!-- ENCABEZADO ORDENABLE: VENTAS -->
+                <th id="thSortSales" class="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por ventas">
+                  Ventas ($) <span id="iconSortSales" class="text-indigo-600 ml-0.5 font-bold">↓</span>
+                </th>
+                
+                <!-- ENCABEZADO ORDENABLE: GANANCIA -->
+                <th id="thSortProfit" class="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por ganancia">
+                  Ganancia ($) <span id="iconSortProfit" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                </th>
+                
+                <th class="py-3 px-4 text-right">Margen</th>
+              </tr>
+            </thead>
             <tbody id="productsGlobalTableBody" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
