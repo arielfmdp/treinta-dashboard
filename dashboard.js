@@ -1,5 +1,5 @@
 (async function () {
-  // 1. Evitar abrirlo dos veces
+  // 1. Evitar abrir múltiples instancias
   if (document.getElementById("treinta-dashboard-overlay")) {
     document.getElementById("treinta-dashboard-overlay").remove();
     return;
@@ -26,8 +26,7 @@
     return;
   }
 
-  // 3. Descargar el index.html limpio desde GitHub Pages
-  // ⚠️ REEMPLAZA 'TU-USUARIO' POR TU NOMBRE DE USUARIO REAL DE GITHUB:
+  // 3. Descargar index.html desde tu GitHub Pages
   const GITHUB_HTML_URL = "https://arielfmdp.github.io/treinta-dashboard/index.html?v=" + Date.now();
 
   try {
@@ -35,7 +34,7 @@
     if (!res.ok) throw new Error("No se pudo descargar index.html (Status: " + res.status + ")");
     let html = await res.text();
 
-    // 4. Inyectar las credenciales vivas en el HTML antes de renderizar
+    // 4. Inyectar credenciales y forzar que app.js no use caché vieja
     const sessionScript = "<script>" +
       "window.__TREINTA_AUTH__ = {" +
         "token: " + JSON.stringify(accessToken) + "," +
@@ -45,8 +44,9 @@
     "<\/script>";
 
     html = html.replace("<!-- INJECT_SESSION -->", sessionScript);
+    html = html.replace("app.js", "app.js?v=" + Date.now());
 
-    // 5. Crear el iframe moderno con srcdoc (estándar HTML5, sin document.write)
+    // 5. Crear el iframe moderno con srcdoc
     const iframe = document.createElement("iframe");
     iframe.id = "treinta-dashboard-overlay";
     iframe.style.position = "fixed";
