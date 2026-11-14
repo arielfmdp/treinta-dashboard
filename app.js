@@ -51,6 +51,46 @@ var chartExecSalesInstance = null;
 var currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
 var numberFormatter = new Intl.NumberFormat('es-AR');
 
+// Diccionario en memoria: ID de Producto ➔ Nombre de Categoría
+var productCategoryMap = {};
+try {
+  productCategoryMap = JSON.parse(localStorage.getItem("t_prod_cat_map") || "{}");
+} catch(e) {}
+
+async function ensureProductCategoryMap() {
+  if (Object.keys(productCategoryMap).length >= 50) return; // Si ya está en caché local, no gasta red
+
+  try {
+    var res = await fetch("https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=1&limit=100&sort=created_at&order=desc", { headers: getHeaders() });
+    if (res.ok) {
+      var d = await res.json();
+      var total = d.total || 0;
+      (d.data || []).forEach(function(p) {
+        if (p.id) productCategoryMap[p.id] = p.categoryName || "SIN CATEGORIA";
+      });
+
+      var totalPages = Math.ceil(total / 100);
+      var promises = [];
+      for (var pg = 2; pg <= totalPages; pg++) {
+        promises.push(
+          fetch("https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + pg + "&limit=100&sort=created_at&order=desc", { headers: getHeaders() })
+            .then(function(r) { return r.json(); })
+            .then(function(resData) {
+              (resData.data || []).forEach(function(p) {
+                if (p.id) productCategoryMap[p.id] = p.categoryName || "SIN CATEGORIA";
+              });
+            }).catch(function() {})
+        );
+      }
+      if (promises.length > 0) await Promise.all(promises);
+      localStorage.setItem("t_prod_cat_map", JSON.stringify(productCategoryMap));
+      if (activeTab === "sales") renderGlobalProductsTable(allGlobalProducts);
+    }
+  } catch(e) {
+    console.error("Error mapa categorías:", e);
+  }
+}
+
 // Botón Salir
 document.getElementById("btnCloseDashboard").onclick = function() {
   window.parent.document.getElementById("treinta-dashboard-overlay").remove();
@@ -775,9 +815,28 @@ function renderGlobalProductsTable(items) {
       ? '<img src="' + prod.imageUrl + '" data-preview="' + prod.imageUrl + '" class="' + dim + ' rounded-lg object-contain bg-white border border-slate-200 cursor-zoom-in img-previewable" alt="img">'
       : '<div class="' + dim + ' rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
 
+    // Cruce en memoria con el mapa de inventario para obtener la categoría
+    var catName = productCategoryMap[prod.productId];
+    if (!catName && salesSelectedCategoryId) {
+      var matchedCat = invCategories.find(function(c) { return c.id === salesSelectedCategoryId; });
+      if (matchedCat) catName = matchedCat.name;
+    }
+
+    var catBadge = catName
+      ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[10px]">' + catName + '</span>'
+      : '<span class="text-slate-300 italic text-[11px]">-</span>';
+
     var tr = document.createElement("tr");
     tr.className = isLoss ? "bg-rose-50/70 border-l-4 border-rose-500" : "hover:bg-slate-50";
-    tr.innerHTML = '<td class="py-2.5 px-4 text-slate-400">' + (idx + 1) + '</td><td class="py-2.5 px-4">' + imgTag + '</td><td class="py-2.5 px-4 font-medium">' + (prod.productName || "Sin Nombre") + '</td><td class="py-2.5 px-4 text-center font-bold">' + numberFormatter.format(units) + '</td><td class="py-2.5 px-4 text-right">' + currencyFormatter.format(units > 0 ? sales / units : 0) + '</td><td class="py-2.5 px-4 text-right font-bold">' + currencyFormatter.format(sales) + '</td><td class="py-2.5 px-4 text-right font-bold ' + (isLoss ? 'text-rose-600' : 'text-emerald-600') + '">' + currencyFormatter.format(profit) + '</td><td class="py-2.5 px-4 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700') + '">' + (sales > 0 ? ((profit/sales)*100).toFixed(1) : 0) + '%</span></td>';
+    tr.innerHTML = '<td class="py-2.5 px-4 text-slate-400">' + (idx + 1) + '</td>' +
+                   '<td class="py-2.5 px-4">' + imgTag + '</td>' +
+                   '<td class="py-2.5 px-4 font-medium">' + (prod.productName || "Sin Nombre") + '</td>' +
+                   '<td class="py-2.5 px-4">' + catBadge + '</td>' +
+                   '<td class="py-2.5 px-4 text-center font-bold">' + numberFormatter.format(units) + '</td>' +
+                   '<td class="py-2.5 px-4 text-right">' + currencyFormatter.format(units > 0 ? sales / units : 0) + '</td>' +
+                   '<td class="py-2.5 px-4 text-right font-bold">' + currencyFormatter.format(sales) + '</td>' +
+                   '<td class="py-2.5 px-4 text-right font-bold ' + (isLoss ? 'text-rose-600' : 'text-emerald-600') + '">' + currencyFormatter.format(profit) + '</td>' +
+                   '<td class="py-2.5 px-4 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isLoss ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700') + '">' + (sales > 0 ? ((profit/sales)*100).toFixed(1) : 0) + '%</span></td>';
     b.appendChild(tr);
   });
 }
@@ -859,6 +918,7 @@ function refreshAll() {
 
 // --- PÍLDORAS DE CATEGORÍAS EN VENTAS ---
 async function initSalesCategories() {
+  ensureProductCategoryMap();
   if (salesCategoriesLoaded) return;
   if (invCategories.length === 0) {
     try {
