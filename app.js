@@ -44,6 +44,8 @@ var invSearchTerm = "";
 var invSearchTimeout = null;
 var invSortField = "created_at"; // "created_at", "name", "price", "stock"
 var invSortOrder = "desc";
+// Estado de columna Fecha Alta visible u oculta
+var invShowCreatedCol = localStorage.getItem("t_show_created_col") === "true";
 
 var chartClientsInstance = null;
 var chartProductsInstance = null;
@@ -121,6 +123,27 @@ function syncThumbSizeButtons() {
     }
   });
 }
+
+function syncCreatedColToggleBtn() {
+  var btn = document.getElementById("btnToggleCreatedCol");
+  var th = document.getElementById("thInvSortCreated");
+  if (!btn || !th) return;
+
+  if (invShowCreatedCol) {
+    btn.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-300 shadow-sm transition flex items-center gap-1 select-none";
+    th.classList.remove("hidden");
+  } else {
+    btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1 select-none";
+    th.classList.add("hidden");
+  }
+}
+
+document.getElementById("btnToggleCreatedCol").onclick = function() {
+  invShowCreatedCol = !invShowCreatedCol;
+  localStorage.setItem("t_show_created_col", invShowCreatedCol ? "true" : "false");
+  syncCreatedColToggleBtn();
+  renderInventoryTable();
+};
 
 document.querySelectorAll(".btn-thumb-size").forEach(function(btn) {
   btn.onclick = function() {
@@ -248,6 +271,8 @@ function switchTab(t) {
 // Inventario
 async function initInventoryView() {
   syncThumbSizeButtons();
+  syncCreatedColToggleBtn();
+
   if (!invSummaryData) fetchInventorySummary();
   if (invCategories.length === 0) fetchInventoryCategories();
   if (allInventoryProducts.length === 0) resetAndFetchInventory();
@@ -401,11 +426,16 @@ function renderInventoryTable() {
       ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-cat" data-cat-id="' + (prod.storeCategoriesId || '') + '" title="Clic para filtrar por ' + prod.categoryName + '">' + prod.categoryName + '</span>'
       : '<span class="text-slate-300 italic text-[11px]">-</span>';
 
-    // Formatear la fecha de creación real que viene en el JSON
-    var createdDateStr = "-";
-    if (prod.createdAt) {
-      var d = new Date(prod.createdAt);
-      createdDateStr = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    
+    // Formatear la fecha de creación si la columna está activa
+    var createdCell = "";
+    if (invShowCreatedCol) {
+      var createdDateStr = "-";
+      if (prod.createdAt) {
+        var d = new Date(prod.createdAt);
+        createdDateStr = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+      createdCell = '<td class="py-2.5 px-3 text-center text-slate-500 font-mono text-[11px] whitespace-nowrap">' + createdDateStr + '</td>';
     }
 
     tr.innerHTML = '<td class="py-2.5 px-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
@@ -415,7 +445,7 @@ function renderInventoryTable() {
                      (prod.sku ? '<div class="text-[10px] text-slate-400 font-mono">SKU: ' + prod.sku + '</div>' : '') +
                    '</td>' +
                    '<td class="py-2.5 px-3">' + catBadge + '</td>' +
-                   '<td class="py-2.5 px-3 text-center text-slate-500 font-mono text-[11px] whitespace-nowrap">' + createdDateStr + '</td>' + // 👈 Celda de Fecha Alta
+                   createdCell + // 👈 Celda condicional
                    '<td class="py-2.5 px-3 text-right font-bold text-slate-900">' + currencyFormatter.format(price) + '</td>' +
                    '<td class="py-2.5 px-3 text-right text-slate-600">' + currencyFormatter.format(cost) + '</td>' +
                    '<td class="py-2.5 px-3 text-center">' + stockBadge + '</td>' +
