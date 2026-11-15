@@ -354,7 +354,7 @@ async function fetchInventoryPage() {
 
 function renderInventoryTable() {
   var body = document.getElementById("inventoryTableBody");
-  var filtered = allInventoryProducts; // El servidor ya nos entrega los productos correctos
+  var filtered = allInventoryProducts;
 
   document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
 
@@ -364,7 +364,7 @@ function renderInventoryTable() {
   document.getElementById("invKpiNoStockCount").textContent = noStockCount + " sin stock";
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">No se encontraron productos.</td></tr>';
+    body.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-400">No se encontraron productos.</td></tr>';
     return;
   }
 
@@ -398,8 +398,15 @@ function renderInventoryTable() {
       : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">' + marginPct + '%</span>';
 
     var catBadge = prod.categoryName
-          ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-cat" data-cat-id="' + (prod.storeCategoriesId || '') + '" title="Clic para filtrar por ' + prod.categoryName + '">' + prod.categoryName + '</span>'
-          : '<span class="text-slate-300 italic text-[11px]">-</span>';
+      ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-cat" data-cat-id="' + (prod.storeCategoriesId || '') + '" title="Clic para filtrar por ' + prod.categoryName + '">' + prod.categoryName + '</span>'
+      : '<span class="text-slate-300 italic text-[11px]">-</span>';
+
+    // Formatear la fecha de creación real que viene en el JSON
+    var createdDateStr = "-";
+    if (prod.createdAt) {
+      var d = new Date(prod.createdAt);
+      createdDateStr = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
 
     tr.innerHTML = '<td class="py-2.5 px-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
                    '<td class="py-2.5 px-3">' + imgTag + '</td>' +
@@ -408,6 +415,7 @@ function renderInventoryTable() {
                      (prod.sku ? '<div class="text-[10px] text-slate-400 font-mono">SKU: ' + prod.sku + '</div>' : '') +
                    '</td>' +
                    '<td class="py-2.5 px-3">' + catBadge + '</td>' +
+                   '<td class="py-2.5 px-3 text-center text-slate-500 font-mono text-[11px] whitespace-nowrap">' + createdDateStr + '</td>' + // 👈 Celda de Fecha Alta
                    '<td class="py-2.5 px-3 text-right font-bold text-slate-900">' + currencyFormatter.format(price) + '</td>' +
                    '<td class="py-2.5 px-3 text-right text-slate-600">' + currencyFormatter.format(cost) + '</td>' +
                    '<td class="py-2.5 px-3 text-center">' + stockBadge + '</td>' +

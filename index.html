@@ -283,10 +283,7 @@
           <table class="w-full text-left border-collapse text-xs">
             <thead>
               <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
-                <!-- ORDENABLE: FECHA DE CREACIÓN / RECIENTES -->
-                <th id="thInvSortCreated" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition select-none" title="Ordenar por más recientes / fecha de creación">
-                  # <span id="iconInvSortCreated" class="text-indigo-600 ml-0.5 font-bold">↓</span>
-                </th>
+                <th class="py-3 px-3">#</th>
                 <th class="py-3 px-3">Foto</th>
                 
                 <!-- ORDENABLE: NOMBRE / PRODUCTO -->
@@ -295,6 +292,11 @@
                 </th>
                 
                 <th class="py-3 px-3">Categoría</th>
+                
+                <!-- ORDENABLE: FECHA DE CREACIÓN / ALTA -->
+                <th id="thInvSortCreated" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition text-center" title="Ordenar por fecha de alta">
+                  Fecha Alta <span id="iconInvSortCreated" class="text-indigo-600 ml-0.5 font-bold">↓</span>
+                </th>
                 
                 <!-- ORDENABLE: PRECIO -->
                 <th id="thInvSortPrice" class="py-3 px-3 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
