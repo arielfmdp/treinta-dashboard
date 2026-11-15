@@ -321,8 +321,18 @@ async function fetchInventoryPage() {
   document.getElementById("invLoadingText").textContent = "Cargando artículos...";
 
   var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=created_at&order=desc";
-  if (invSelectedCategoryId) url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
-  if (invSearchTerm) url += "&search=" + encodeURIComponent(invSearchTerm);
+  
+    if (invFilterOnlyNoStock) {
+    url += "&quickFilters=lowStock";
+  }
+
+  if (invSelectedCategoryId) {
+    url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
+  }
+  if (invSearchTerm) {
+    url += "&search=" + encodeURIComponent(invSearchTerm);
+  }
+
 
   try {
     var res = await fetch(url, { headers: getHeaders() });
@@ -341,11 +351,7 @@ async function fetchInventoryPage() {
 
 function renderInventoryTable() {
   var body = document.getElementById("inventoryTableBody");
-  var filtered = allInventoryProducts;
-
-  if (invFilterOnlyNoStock) {
-    filtered = filtered.filter(function(p) { return (p.stock || 0) <= 0; });
-  }
+  var filtered = allInventoryProducts; // El servidor ya nos entrega los productos correctos
 
   document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
 
