@@ -1502,7 +1502,10 @@ function renderTransactionsTable() {
   body.innerHTML = "";
   filtered.forEach(function(tx) {
     var tr = document.createElement("tr");
-    tr.className = "hover:bg-slate-50 transition-colors";
+    // Fila clickeable con efecto hover y el ID de la transacción asociado:
+    tr.className = "hover:bg-indigo-50/40 cursor-pointer transition-colors";
+    tr.dataset.txId = tx.transactionId || tx.id;
+
 
     // Formato ultra-compacto 24hs sin preposiciones "de": DD/MM/AAAA HH:mm
     var dateMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : 0);
@@ -1544,6 +1547,132 @@ new IntersectionObserver(function(entries) {
     fetchTransactionsPage();
   }
 }, { root: null, rootMargin: "300px", threshold: 0 }).observe(document.getElementById("txInfiniteScrollTrigger"));
+
+
+// ==================== DETALLE DE COMPROBANTE EN MODAL ====================
+var modalTxDetail = document.getElementById("modalTxDetail");
+var modalTxDetailCard = document.getElementById("modalTxDetailCard");
+var modalTxProductsList = document.getElementById("modalTxProductsList");
+
+// Clic en cualquier fila de la tabla de comprobantes (delegación de eventos)
+document.getElementById("transactionsTableBody").addEventListener("click", function(e) {
+  var row = e.target.closest("tr");
+  if (row && row.dataset.txId) {
+    openTransactionDetail(row.dataset.txId);
+  }
+});
+
+async function openTransactionDetail(txId) {
+  document.body.classList.add("overflow-hidden");
+  modalTxDetail.classList.remove("hidden");
+
+  document.getElementById("modalTxTitle").textContent = "Consultando comprobante...";
+  document.getElementById("modalTxSubtitle").textContent = "Cargando datos...";
+  modalTxProductsList.innerHTML = '<p class="text-center py-8 text-indigo-600 text-xs font-semibold"><span class="inline-block animate-spin mr-1.5">🔄</span> Cargando detalle del pedido...</p>';
+
+  try {
+    var url = "https://core-api-gateway.treinta.co/transactions/" + txId;
+    var res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error("Error " + res.status);
+
+    var data = await res.json();
+    var tx = data.transaction || {};
+    var totals = data.totals || {};
+    var products = data.products || [];
+    var contact = tx.contact || {};
+    var user = tx.user || {};
+
+    // 1. Títulos
+    document.getElementById("modalTxTitle").textContent = tx.description || "Comprobante de venta";
+    document.getElementById("modalTxSubtitle").textContent = "Transacción #" + (tx.transactionCount || tx.id.slice(0, 8));
+
+    // 2. Tarjeta Financiera
+    var mainVal = tx.value || totals.total || 0;
+    document.getElementById("modalTxMainAmount").textContent = currencyFormatter.format(mainVal);
+    document.getElementById("modalTxTotalSale").textContent = currencyFormatter.format(totals.total || mainVal);
+    document.getElementById("modalTxProfit").textContent = currencyFormatter.format(totals.profit || 0);
+
+    // Descuento
+    var discVal = totals.totalDiscount || 0;
+    var discRow = document.getElementById("modalTxDiscountRow");
+    if (discVal > 0) {
+      discRow.classList.remove("hidden");
+      document.getElementById("modalTxDiscountVal").textContent = currencyFormatter.format(discVal);
+    } else {
+      discRow.classList.add("hidden");
+    }
+
+    // Metadatos
+    document.getElementById("modalTxClient").textContent = contact.name || "Consumidor Final";
+    document.getElementById("modalTxUser").textContent = (user.firstName ? user.firstName + " " + (user.lastName || "") : "-").trim();
+    document.getElementById("modalTxPayment").textContent = tx.paymentTypeId === 1 ? "Efectivo" : "Otro";
+
+    // Fecha
+    var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : 0);
+    var dStr = "-";
+    if (dMs) {
+      var dObj = new Date(dMs);
+      dStr = ("0" + dObj.getDate()).slice(-2) + "/" + ("0" + (dObj.getMonth() + 1)).slice(-2) + "/" + dObj.getFullYear() + " " +
+             ("0" + dObj.getHours()).slice(-2) + ":" + ("0" + dObj.getMinutes()).slice(-2);
+    }
+    document.getElementById("modalTxDateTime").textContent = dStr;
+
+    // 3. Listado de Artículos
+    document.getElementById("modalTxProdCount").textContent = products.length + " artículos";
+
+    if (products.length === 0) {
+      modalTxProductsList.innerHTML = '<p class="text-center py-6 text-slate-400 text-xs">Sin artículos registrados.</p>';
+      return;
+    }
+
+    var htmlProds = "";
+    products.forEach(function(p) {
+      var cant = p.amount || 1;
+      var pUnit = p.price || 0;
+      var pTotal = cant * pUnit;
+
+      var img = p.imageUrl
+        ? '<img src="' + p.imageUrl + '" class="w-10 h-10 rounded-lg object-contain bg-white border border-slate-200" alt="img">'
+        : '<div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">📦</div>';
+
+      htmlProds += '<div class="p-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition">' +
+                     '<div class="flex items-center gap-3 min-w-0">' +
+                       img +
+                       '<div class="min-w-0">' +
+                         '<p class="text-xs font-bold text-slate-800 truncate">' + (p.name || "Sin Nombre") + '</p>' +
+                         '<p class="text-[11px] text-slate-500">' + cant + ' Unidades · <span class="font-mono">' + currencyFormatter.format(pUnit) + ' x und</span></p>' +
+                       '</div>' +
+                     '</div>' +
+                     '<p class="font-extrabold text-xs text-slate-900 whitespace-nowrap">' + currencyFormatter.format(pTotal) + '</p>' +
+                   '</div>';
+    });
+
+    modalTxProductsList.innerHTML = htmlProds;
+
+  } catch (err) {
+    console.error("Error al obtener transacción:", err);
+    modalTxProductsList.innerHTML = '<p class="text-center py-6 text-rose-500 text-xs font-bold">Error al cargar detalle del pedido.</p>';
+  }
+}
+
+function closeTxDetailModal() {
+  modalTxDetail.classList.add("hidden");
+  document.body.classList.remove("overflow-hidden");
+}
+
+document.getElementById("btnCloseTxDetail").onclick = closeTxDetailModal;
+document.getElementById("btnCloseTxDetailFooter").onclick = closeTxDetailModal;
+modalTxDetail.onclick = function(e) {
+  if (!modalTxDetailCard.contains(e.target)) closeTxDetailModal();
+};
+
+// Cierre con Esc integrado
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" || e.keyCode === 27) {
+    closeTxDetailModal();
+  }
+});
+
 
 // Activar delegación del hover de zoom en ambas tablas
 attachHoverPreviewEvents("productsGlobalTableBody");
