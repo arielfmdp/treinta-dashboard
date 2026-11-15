@@ -1136,38 +1136,60 @@ var txDatePopupModal = document.getElementById("txDatePopupModal");
 var txPopupContent = document.getElementById("txPopupContent");
 var lblTxCurrentRange = document.getElementById("lblTxCurrentRange");
 
+// Conversión directa a milisegundos de Treinta en zona horaria Argentina (UTC-3)
+function toTreintaStartMs(year, month, day) {
+  return Date.UTC(year, month - 1, day, 3, 0, 0, 0);
+}
+
+function toTreintaEndMs(year, month, day) {
+  return Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999);
+}
+
 function getTxTimestamps() {
-  var start, end;
   var y = txAnchorDate.getFullYear();
   var m = txAnchorDate.getMonth();
   var d = txAnchorDate.getDate();
+  var startMs, endMs, startObj, endObj;
 
   if (txPeriodMode === "daily") {
-    start = new Date(y, m, d);
-    end = new Date(y, m, d, 23, 59, 59, 999);
+    startMs = toTreintaStartMs(y, m + 1, d);
+    endMs = toTreintaEndMs(y, m + 1, d);
+    startObj = new Date(y, m, d);
+    endObj = new Date(y, m, d);
   } else if (txPeriodMode === "weekly") {
     var dayOfWeek = txAnchorDate.getDay() || 7; // Lunes = 1, Domingo = 7
-    start = new Date(y, m, d - dayOfWeek + 1);
-    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6, 23, 59, 59, 999);
+    var mon = new Date(y, m, d - dayOfWeek + 1);
+    var sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+
+    startMs = toTreintaStartMs(mon.getFullYear(), mon.getMonth() + 1, mon.getDate());
+    endMs = toTreintaEndMs(sun.getFullYear(), sun.getMonth() + 1, sun.getDate());
+    startObj = mon;
+    endObj = sun;
   } else if (txPeriodMode === "monthly") {
-    start = new Date(y, m, 1);
-    end = new Date(y, m + 1, 0, 23, 59, 59, 999);
+    var lastDay = new Date(y, m + 1, 0).getDate();
+    startMs = toTreintaStartMs(y, m + 1, 1);
+    endMs = toTreintaEndMs(y, m + 1, lastDay);
+    startObj = new Date(y, m, 1);
+    endObj = new Date(y, m, lastDay);
   } else if (txPeriodMode === "yearly") {
-    start = new Date(y, 0, 1);
-    end = new Date(y, 11, 31, 23, 59, 59, 999);
+    startMs = toTreintaStartMs(y, 1, 1);
+    endMs = toTreintaEndMs(y, 12, 31);
+    startObj = new Date(y, 0, 1);
+    endObj = new Date(y, 11, 31);
   } else if (txPeriodMode === "custom") {
-    start = new Date(txCustomStart);
-    end = new Date(txCustomEnd);
+    var sParts = document.getElementById("txCustomStartDate").value.split("-").map(Number);
+    var eParts = document.getElementById("txCustomEndDate").value.split("-").map(Number);
+    startMs = toTreintaStartMs(sParts[0], sParts[1], sParts[2]);
+    endMs = toTreintaEndMs(eParts[0], eParts[1], eParts[2]);
+    startObj = new Date(sParts[0], sParts[1] - 1, sParts[2]);
+    endObj = new Date(eParts[0], eParts[1] - 1, eParts[2]);
   }
 
-  var sIso = start.toISOString().split("T")[0];
-  var eIso = end.toISOString().split("T")[0];
-
   return {
-    startMs: new Date(getArgentinaStartISO(sIso)).getTime(),
-    endMs: new Date(getArgentinaEndISO(eIso)).getTime(),
-    startObj: start,
-    endObj: end
+    startMs: startMs,
+    endMs: endMs,
+    startObj: startObj,
+    endObj: endObj
   };
 }
 
