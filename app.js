@@ -42,6 +42,8 @@ var invSelectedCategoryId = "";
 var invFilterOnlyNoStock = false;
 var invSearchTerm = "";
 var invSearchTimeout = null;
+var invSortField = "created_at"; // "created_at", "name", "price", "stock"
+var invSortOrder = "desc";
 
 var chartClientsInstance = null;
 var chartProductsInstance = null;
@@ -320,7 +322,8 @@ async function fetchInventoryPage() {
   invIsLoading = true;
   document.getElementById("invLoadingText").textContent = "Cargando artículos...";
 
-  var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=created_at&order=desc";
+  var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=" + invSortField + "&order=" + invSortOrder;
+
   
     if (invFilterOnlyNoStock) {
     url += "&quickFilters=lowStock";
@@ -991,6 +994,37 @@ function updateSortIcons() {
 document.getElementById("thSortUnits").onclick = function() { handleSalesSort("units"); };
 document.getElementById("thSortSales").onclick = function() { handleSalesSort("sales"); };
 document.getElementById("thSortProfit").onclick = function() { handleSalesSort("profit"); };
+
+// --- ORDENAMIENTO AL HACER CLIC EN ENCABEZADOS DE INVENTARIO ---
+function handleInvSort(field) {
+  if (invSortField === field) {
+    invSortOrder = invSortOrder === "desc" ? "asc" : "desc";
+  } else {
+    invSortField = field;
+    invSortOrder = (field === "name") ? "asc" : "desc"; // Alfabético A-Z por defecto, números de mayor a menor
+  }
+  updateInvSortIcons();
+  resetAndFetchInventory();
+}
+
+function updateInvSortIcons() {
+  var iconMap = { name: "iconInvSortName", price: "iconInvSortPrice", stock: "iconInvSortStock" };
+  ["name", "price", "stock"].forEach(function(f) {
+    var iconEl = document.getElementById(iconMap[f]);
+    if (!iconEl) return;
+    if (f === invSortField) {
+      iconEl.className = "text-indigo-600 font-bold ml-0.5";
+      iconEl.textContent = invSortOrder === "desc" ? "↓" : "↑";
+    } else {
+      iconEl.className = "text-slate-300 ml-0.5 font-bold";
+      iconEl.textContent = "↕";
+    }
+  });
+}
+
+document.getElementById("thInvSortName").onclick = function() { handleInvSort("name"); };
+document.getElementById("thInvSortPrice").onclick = function() { handleInvSort("price"); };
+document.getElementById("thInvSortStock").onclick = function() { handleInvSort("stock"); };
 
 document.getElementById("btnRefresh").onclick = refreshAll;
 document.getElementById("chkOnlyLosses").onchange = function() { renderGlobalProductsTable(allGlobalProducts); };

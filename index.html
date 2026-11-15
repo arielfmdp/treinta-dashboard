@@ -282,16 +282,31 @@
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
-              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b">
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
                 <th class="py-3 px-3">#</th>
                 <th class="py-3 px-3">Foto</th>
-                <th class="py-3 px-3">Producto / SKU</th>
+                
+                <!-- ORDENABLE: NOMBRE / PRODUCTO -->
+                <th id="thInvSortName" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition" title="Ordenar por nombre">
+                  Producto / SKU <span id="iconInvSortName" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                </th>
+                
                 <th class="py-3 px-3">Categoría</th>
-                <th class="py-3 px-3 text-right">Precio</th>
+                
+                <!-- ORDENABLE: PRECIO -->
+                <th id="thInvSortPrice" class="py-3 px-3 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
+                  Precio <span id="iconInvSortPrice" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                </th>
+                
                 <th class="py-3 px-3 text-right">Costo</th>
-                <th class="py-3 px-3 text-center">Stock</th>
+                
+                <!-- ORDENABLE: STOCK -->
+                <th id="thInvSortStock" class="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por stock">
+                  Stock <span id="iconInvSortStock" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                </th>
+                
                 <th class="py-3 px-3 text-right">Ganancia</th>
-                <th class="py-3 px-3 text-right">Margen</th>
+                <th class="py-3 px-4 text-right">Margen</th>
                 <th class="py-3 px-3 text-right">Total Valor</th>
               </tr>
             </thead>
