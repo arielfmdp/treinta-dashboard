@@ -1121,52 +1121,279 @@ document.getElementById("productsGlobalTableBody").addEventListener("click", fun
 
 // ==================== MÓDULO DE TRANSACCIONES / COMPROBANTES ====================
 var txPeriodMode = "weekly";
+var txAnchorDate = new Date(); // Fecha ancla para navegar
+var txCustomStart = new Date();
+var txCustomEnd = new Date();
 var allTransactions = [];
 var txCurrentPage = 1;
 var txIsLoading = false;
 var txHasMore = true;
 var txSearchTerm = "";
 
+// Elementos del popup
+var btnTxDatePickerTrigger = document.getElementById("btnTxDatePickerTrigger");
+var txDatePopupModal = document.getElementById("txDatePopupModal");
+var txPopupContent = document.getElementById("txPopupContent");
+var lblTxCurrentRange = document.getElementById("lblTxCurrentRange");
+
 function getTxTimestamps() {
-  var now = new Date();
   var start, end;
+  var y = txAnchorDate.getFullYear();
+  var m = txAnchorDate.getMonth();
+  var d = txAnchorDate.getDate();
 
   if (txPeriodMode === "daily") {
-    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    start = new Date(y, m, d);
+    end = new Date(y, m, d, 23, 59, 59, 999);
   } else if (txPeriodMode === "weekly") {
-    var day = now.getDay() || 7; // Lunes como 1
-    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+    var dayOfWeek = txAnchorDate.getDay() || 7; // Lunes = 1, Domingo = 7
+    start = new Date(y, m, d - dayOfWeek + 1);
     end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6, 23, 59, 59, 999);
   } else if (txPeriodMode === "monthly") {
-    start = new Date(now.getFullYear(), now.getMonth(), 1);
-    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    start = new Date(y, m, 1);
+    end = new Date(y, m + 1, 0, 23, 59, 59, 999);
   } else if (txPeriodMode === "yearly") {
-    start = new Date(now.getFullYear(), 0, 1);
-    end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    start = new Date(y, 0, 1);
+    end = new Date(y, 11, 31, 23, 59, 59, 999);
   } else if (txPeriodMode === "custom") {
-    var sVal = document.getElementById("txCustomStartDate").value;
-    var eVal = document.getElementById("txCustomEndDate").value;
-    start = new Date(sVal + "T00:00:00");
-    end = new Date(eVal + "T23:59:59.999");
+    start = new Date(txCustomStart);
+    end = new Date(txCustomEnd);
   }
 
-  // Convertir al horario exacto UTC-3 de Argentina
   var sIso = start.toISOString().split("T")[0];
   var eIso = end.toISOString().split("T")[0];
 
   return {
     startMs: new Date(getArgentinaStartISO(sIso)).getTime(),
-    endMs: new Date(getArgentinaEndISO(eIso)).getTime()
+    endMs: new Date(getArgentinaEndISO(eIso)).getTime(),
+    startObj: start,
+    endObj: end
   };
 }
 
+function updateTxRangeLabel() {
+  var ts = getTxTimestamps();
+  var s = ts.startObj;
+  var e = ts.endObj;
+
+  if (txPeriodMode === "daily") {
+    lblTxCurrentRange.textContent = s.getDate() + " " + s.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '') + " " + s.getFullYear();
+  } else if (txPeriodMode === "weekly") {
+    lblTxCurrentRange.textContent = s.getDate() + " " + s.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '') + " | " + e.getDate() + " " + e.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '');
+  } else if (txPeriodMode === "monthly") {
+    lblTxCurrentRange.textContent = s.toLocaleDateString('es-AR', { month: 'short' }).replace('.', '') + " " + s.getFullYear();
+  } else if (txPeriodMode === "yearly") {
+    lblTxCurrentRange.textContent = s.getFullYear().toString();
+  } else if (txPeriodMode === "custom") {
+    lblTxCurrentRange.textContent = s.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + " al " + e.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  }
+}
+
+// Renderizado del contenido del popup según el modo
+function renderTxPopupUI() {
+  txPopupContent.innerHTML = "";
+  var y = txAnchorDate.getFullYear();
+  var m = txAnchorDate.getMonth();
+
+  if (txPeriodMode === "daily" || txPeriodMode === "weekly") {
+    // CALENDARIO MENSUAL CON DÍAS O SEMANAS RESALTADAS
+    var header = document.createElement("div");
+    header.className = "flex justify-between items-center mb-3 font-bold text-xs text-slate-800";
+    header.innerHTML = '<span class="capitalize">' + txAnchorDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }) + '</span>' +
+                       '<div class="flex gap-1">' +
+                         '<button id="popCalPrevMonth" class="px-2 py-0.5 hover:bg-slate-100 rounded text-slate-500 font-bold">‹</button>' +
+                         '<button id="popCalNextMonth" class="px-2 py-0.5 hover:bg-slate-100 rounded text-slate-500 font-bold">›</button>' +
+                       '</div>';
+    txPopupContent.appendChild(header);
+
+    var grid = document.createElement("div");
+    grid.className = "grid grid-cols-7 gap-1 text-center text-xs";
+    
+    // Encabezados L M M J V S D
+    ["L", "M", "M", "J", "V", "S", "D"].forEach(function(dName) {
+      grid.innerHTML += '<span class="text-[10px] font-bold text-slate-400 py-1">' + dName + '</span>';
+    });
+
+    var firstDayMonth = new Date(y, m, 1);
+    var startDayIndex = firstDayMonth.getDay() || 7; // Lunes = 1
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    // Espacios vacíos
+    for (var i = 1; i < startDayIndex; i++) {
+      grid.innerHTML += '<span></span>';
+    }
+
+    var ts = getTxTimestamps();
+
+    for (var dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      (function(dn) {
+        var thisDate = new Date(y, m, dn);
+        var isSelected = false;
+
+        if (txPeriodMode === "daily") {
+          isSelected = thisDate.toDateString() === txAnchorDate.toDateString();
+        } else if (txPeriodMode === "weekly") {
+          isSelected = thisDate >= ts.startObj && thisDate <= ts.endObj;
+        }
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "py-1.5 rounded-md text-xs font-semibold transition " +
+          (isSelected ? "bg-amber-400 text-slate-900 font-bold" : "hover:bg-slate-100 text-slate-700");
+        btn.textContent = dn;
+
+        btn.onclick = function() {
+          txAnchorDate = thisDate;
+          txDatePopupModal.classList.add("hidden");
+          updateTxRangeLabel();
+          resetAndFetchTransactions();
+        };
+
+        grid.appendChild(btn);
+      })(dayNum);
+    }
+
+    txPopupContent.appendChild(grid);
+
+    document.getElementById("popCalPrevMonth").onclick = function() {
+      txAnchorDate = new Date(y, m - 1, 1);
+      renderTxPopupUI();
+    };
+    document.getElementById("popCalNextMonth").onclick = function() {
+      txAnchorDate = new Date(y, m + 1, 1);
+      renderTxPopupUI();
+    };
+
+  } else if (txPeriodMode === "monthly") {
+    // CUADRÍCULA DE 12 MESES (CAPTURA 2)
+    var header = document.createElement("div");
+    header.className = "flex justify-between items-center mb-3 font-bold text-xs text-slate-800";
+    header.innerHTML = '<span>' + y + '</span>' +
+                       '<div class="flex gap-1">' +
+                         '<button id="popMonthPrevYear" class="px-2 py-0.5 hover:bg-slate-100 rounded text-slate-500 font-bold">‹</button>' +
+                         '<button id="popMonthNextYear" class="px-2 py-0.5 hover:bg-slate-100 rounded text-slate-500 font-bold">›</button>' +
+                       '</div>';
+    txPopupContent.appendChild(header);
+
+    var grid = document.createElement("div");
+    grid.className = "grid grid-cols-3 gap-2 text-center text-xs";
+    var monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+    monthNames.forEach(function(mName, mIdx) {
+      var isCurrent = mIdx === txAnchorDate.getMonth();
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "py-2 rounded-lg font-bold transition " + (isCurrent ? "bg-amber-400 text-slate-900" : "hover:bg-slate-100 text-slate-600");
+      btn.textContent = mName;
+      btn.onclick = function() {
+        txAnchorDate = new Date(y, mIdx, 1);
+        txDatePopupModal.classList.add("hidden");
+        updateTxRangeLabel();
+        resetAndFetchTransactions();
+      };
+      grid.appendChild(btn);
+    });
+
+    txPopupContent.appendChild(grid);
+
+    document.getElementById("popMonthPrevYear").onclick = function() {
+      txAnchorDate = new Date(y - 1, m, 1);
+      renderTxPopupUI();
+    };
+    document.getElementById("popMonthNextYear").onclick = function() {
+      txAnchorDate = new Date(y + 1, m, 1);
+      renderTxPopupUI();
+    };
+
+  } else if (txPeriodMode === "yearly") {
+    // CUADRÍCULA NUMÉRICA DE AÑOS (CAPTURA 3)
+    var grid = document.createElement("div");
+    grid.className = "grid grid-cols-4 gap-2 text-center text-xs";
+    var startYear = 2020;
+    var endYear = 2031;
+
+    for (var yr = startYear; yr <= endYear; yr++) {
+      (function(yearNum) {
+        var isCurrent = yearNum === txAnchorDate.getFullYear();
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "py-2 rounded-lg font-bold transition " + (isCurrent ? "bg-amber-400 text-slate-900" : "hover:bg-slate-100 text-slate-600");
+        btn.textContent = yearNum;
+        btn.onclick = function() {
+          txAnchorDate = new Date(yearNum, 0, 1);
+          txDatePopupModal.classList.add("hidden");
+          updateTxRangeLabel();
+          resetAndFetchTransactions();
+        };
+        grid.appendChild(btn);
+      })(yr);
+    }
+    txPopupContent.appendChild(grid);
+
+  } else if (txPeriodMode === "custom") {
+    // PERSONALIZADO
+    txPopupContent.innerHTML = '<div class="space-y-3 text-xs">' +
+      '<p class="font-bold text-slate-700">Rango personalizado</p>' +
+      '<div><label class="text-[10px] text-slate-400 block mb-0.5">Desde</label><input type="date" id="popCustomStart" class="w-full border rounded p-1 text-xs"></div>' +
+      '<div><label class="text-[10px] text-slate-400 block mb-0.5">Hasta</label><input type="date" id="popCustomEnd" class="w-full border rounded p-1 text-xs"></div>' +
+      '<button id="btnPopApplyCustom" class="w-full py-1.5 bg-indigo-600 text-white font-bold rounded-lg shadow-sm">Aplicar</button>' +
+    '</div>';
+
+    document.getElementById("popCustomStart").value = txCustomStart.toISOString().split("T")[0];
+    document.getElementById("popCustomEnd").value = txCustomEnd.toISOString().split("T")[0];
+
+    document.getElementById("btnPopApplyCustom").onclick = function() {
+      txCustomStart = new Date(document.getElementById("popCustomStart").value + "T00:00:00");
+      txCustomEnd = new Date(document.getElementById("popCustomEnd").value + "T23:59:59.999");
+      txDatePopupModal.classList.add("hidden");
+      updateTxRangeLabel();
+      resetAndFetchTransactions();
+    };
+  }
+}
+
+// Abrir / Cerrar el Popup
+btnTxDatePickerTrigger.onclick = function(e) {
+  e.stopPropagation();
+  var isHidden = txDatePopupModal.classList.contains("hidden");
+  if (isHidden) {
+    renderTxPopupUI();
+    txDatePopupModal.classList.remove("hidden");
+  } else {
+    txDatePopupModal.classList.add("hidden");
+  }
+};
+
+document.addEventListener("click", function(e) {
+  if (!txDatePopupModal.contains(e.target) && !btnTxDatePickerTrigger.contains(e.target)) {
+    txDatePopupModal.classList.add("hidden");
+  }
+});
+
+// Botones de Modo (Diario, Semanal, Mensual, Anual, Personalizado)
+["daily", "weekly", "monthly", "yearly", "custom"].forEach(function(m) {
+  var map = { daily: "btnTxPeriodDaily", weekly: "btnTxPeriodWeekly", monthly: "btnTxPeriodMonthly", yearly: "btnTxPeriodYearly", custom: "btnTxPeriodCustom" };
+  document.getElementById(map[m]).onclick = function() {
+    txPeriodMode = m;
+    ["daily", "weekly", "monthly", "yearly", "custom"].forEach(function(modeKey) {
+      var btn = document.getElementById(map[modeKey]);
+      if (modeKey === m) {
+        btn.className = "px-2.5 py-1 rounded font-bold bg-white text-indigo-600 shadow-sm transition";
+      } else {
+        btn.className = "px-2.5 py-1 rounded font-semibold text-slate-600 hover:text-slate-900 transition";
+      }
+    });
+
+    updateTxRangeLabel();
+    renderTxPopupUI();
+    txDatePopupModal.classList.remove("hidden"); // Abre el calendario inmediatamente
+    resetAndFetchTransactions();
+  };
+});
+
 async function initTransactionsView() {
-  syncTxPeriodButtons();
+  updateTxRangeLabel();
   if (allTransactions.length === 0) {
-    var now = new Date();
-    document.getElementById("txCustomStartDate").value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    document.getElementById("txCustomEndDate").value = now.toISOString().split("T")[0];
     resetAndFetchTransactions();
   }
 }
@@ -1290,13 +1517,17 @@ function renderTransactionsTable() {
     var tr = document.createElement("tr");
     tr.className = "hover:bg-slate-50 transition-colors";
 
-    // Formatear fecha y hora
+    // Formato ultra-compacto 24hs sin preposiciones "de": DD/MM/AAAA HH:mm
     var dateMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : 0);
     var dateFormatted = "-";
     if (dateMs) {
       var d = new Date(dateMs);
-      dateFormatted = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) + " " +
-                      d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+      var day = ("0" + d.getDate()).slice(-2);
+      var month = ("0" + (d.getMonth() + 1)).slice(-2);
+      var year = d.getFullYear();
+      var hours = ("0" + d.getHours()).slice(-2);
+      var mins = ("0" + d.getMinutes()).slice(-2);
+      dateFormatted = day + "/" + month + "/" + year + " " + hours + ":" + mins;
     }
 
     var clientDisplay = tx.contactName
