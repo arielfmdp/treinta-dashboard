@@ -398,8 +398,8 @@ function renderInventoryTable() {
       : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">' + marginPct + '%</span>';
 
     var catBadge = prod.categoryName
-      ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[10px]">' + prod.categoryName + '</span>'
-      : '<span class="text-slate-300 italic text-[11px]">-</span>';
+          ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-cat" data-cat-id="' + (prod.storeCategoriesId || '') + '" title="Clic para filtrar por ' + prod.categoryName + '">' + prod.categoryName + '</span>'
+          : '<span class="text-slate-300 italic text-[11px]">-</span>';
 
     tr.innerHTML = '<td class="py-2.5 px-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
                    '<td class="py-2.5 px-3">' + imgTag + '</td>' +
@@ -832,7 +832,7 @@ function renderGlobalProductsTable(items) {
     }
 
     var catBadge = catName
-      ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[10px]">' + catName + '</span>'
+      ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-sales-cat" data-cat-name="' + catName + '" title="Clic para filtrar por ' + catName + '">' + catName + '</span>'
       : '<span class="text-slate-300 italic text-[11px]">-</span>';
 
     var tr = document.createElement("tr");
@@ -1008,8 +1008,8 @@ function handleInvSort(field) {
 }
 
 function updateInvSortIcons() {
-  var iconMap = { name: "iconInvSortName", price: "iconInvSortPrice", stock: "iconInvSortStock" };
-  ["name", "price", "stock"].forEach(function(f) {
+  var iconMap = { created_at: "iconInvSortCreated", name: "iconInvSortName", price: "iconInvSortPrice", stock: "iconInvSortStock" };
+  ["created_at", "name", "price", "stock"].forEach(function(f) {
     var iconEl = document.getElementById(iconMap[f]);
     if (!iconEl) return;
     if (f === invSortField) {
@@ -1022,9 +1022,11 @@ function updateInvSortIcons() {
   });
 }
 
+document.getElementById("thInvSortCreated").onclick = function() { handleInvSort("created_at"); };
 document.getElementById("thInvSortName").onclick = function() { handleInvSort("name"); };
 document.getElementById("thInvSortPrice").onclick = function() { handleInvSort("price"); };
 document.getElementById("thInvSortStock").onclick = function() { handleInvSort("stock"); };
+
 
 document.getElementById("btnRefresh").onclick = refreshAll;
 document.getElementById("chkOnlyLosses").onchange = function() { renderGlobalProductsTable(allGlobalProducts); };
@@ -1032,6 +1034,32 @@ document.getElementById("prodSearchInput").oninput = function() { renderGlobalPr
 document.getElementById("searchInput").oninput = function(e) {
   renderClientsTable(allClients.filter(function(i) { return i.name.toLowerCase().includes(e.target.value.toLowerCase()); }));
 };
+
+// En la tabla de Inventario:
+document.getElementById("inventoryTableBody").addEventListener("click", function(e) {
+  var target = e.target.closest(".btn-filter-cat");
+  if (target && target.dataset.catId) {
+    invSelectedCategoryId = target.dataset.catId;
+    invFilterOnlyNoStock = false;
+    renderCategoryPills();
+    resetAndFetchInventory();
+  }
+});
+
+// En la tabla de Ventas:
+document.getElementById("productsGlobalTableBody").addEventListener("click", function(e) {
+  var target = e.target.closest(".btn-filter-sales-cat");
+  if (target && target.dataset.catName) {
+    var cat = invCategories.find(function(c) {
+      return (c.name || "").trim().toLowerCase() === target.dataset.catName.trim().toLowerCase();
+    });
+    if (cat) {
+      salesSelectedCategoryId = cat.id;
+      renderSalesCategoryPills();
+      resetAndFetchProducts();
+    }
+  }
+});
 
 // Activar delegación del hover de zoom en ambas tablas
 attachHoverPreviewEvents("productsGlobalTableBody");
