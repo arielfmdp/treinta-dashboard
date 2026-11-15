@@ -272,6 +272,9 @@ function switchTab(t) {
   } else if (t === "transactions") {
     tabBtnTransactions.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
     analyticsPeriodSection.classList.add("hidden");
+    viewClients.classList.add("hidden");
+    viewProducts.classList.add("hidden");
+    viewInventory.classList.add("hidden");
     viewTransactions.classList.remove("hidden");
     initTransactionsView(); // 👈 Inicia la vista de comprobantes
   }
