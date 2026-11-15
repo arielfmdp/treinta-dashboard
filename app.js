@@ -466,9 +466,13 @@ document.getElementById("invSearchInput").oninput = function(e) {
   }, 400);
 };
 
-new IntersectionObserver(function(e) {
-  if (e[0].isIntersecting && activeTab === "inventory" && invHasMore && !invIsLoading) fetchInventoryPage();
-}, { threshold: 0.1 }).observe(document.getElementById("invInfiniteScrollTrigger"));
+// Detectores de Scroll Infinito naturales con anticipación de 300px
+new IntersectionObserver(function(entries) {
+  if (entries[0].isIntersecting && activeTab === "inventory" && invHasMore && !invIsLoading) {
+    fetchInventoryPage();
+  }
+}, { root: null, rootMargin: "300px", threshold: 0 }).observe(document.getElementById("invInfiniteScrollTrigger"));
+
 
 // Controles y Fechas
 var modeMonthlyBtn = document.getElementById("modeMonthlyBtn");
@@ -949,9 +953,13 @@ document.getElementById("modalDetail").onclick = function(e) {
   if (!document.getElementById("modalDetailCard").contains(e.target)) closeDetailModal();
 };
 
-new IntersectionObserver(function(e) {
-  if (e[0].isIntersecting && activeTab === "sales" && hasMoreProducts && !isLoadingProducts) fetchProductsPage();
-}, { threshold: 0.1 }).observe(document.getElementById("infiniteScrollTrigger"));
+new IntersectionObserver(function(entries) {
+  if (entries[0].isIntersecting && activeTab === "sales" && hasMoreProducts && !isLoadingProducts) {
+    fetchProductsPage();
+  }
+}, { root: null, rootMargin: "300px", threshold: 0 }).observe(document.getElementById("infiniteScrollTrigger"));
+
+
 
 function refreshAll() {
   if (activeTab === "inventory") {

@@ -145,17 +145,17 @@
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Ticket Promedio</p><h3 id="kpiAvgTicket" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3></div>
       </section>
       <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Clientes</h2><div class="h-80 w-full"><canvas id="topClientsChart"></canvas></div></section>
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="p-4 border-b flex justify-between items-center gap-3">
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="p-4 border-b flex justify-between items-center gap-3 sticky top-[53px] z-20 bg-white/95 backdrop-blur-sm rounded-t-xl shadow-xs">
           <p class="text-xs text-slate-500 font-bold" id="tableRecordCount">Mostrando clientes</p>
-          <input type="text" id="searchInput" placeholder="Buscar cliente..." class="border rounded-lg px-3 py-1.5 text-xs w-64">
+          <input type="text" id="searchInput" placeholder="Buscar cliente..." class="border rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
-        <div class="overflow-auto max-h-[62vh] border-t border-slate-100">
+        <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
-            <thead class="sticky top-0 bg-slate-50 z-10 shadow-sm">
-              <tr class="text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
-
-                <th class="py-3 px-4">#</th><th class="py-3 px-4">Cliente</th>
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b">
+                <th class="py-3 px-4">#</th>
+                <th class="py-3 px-4">Cliente</th>
                 <th class="py-3 px-4 text-right">Ventas ($)</th>
                 <th class="py-3 px-4 text-center">Operaciones</th>
                 <th class="py-3 px-4 text-right">Ticket Prom.</th>
@@ -179,32 +179,31 @@
       </section>
       <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Productos Más Vendidos</h2><div class="h-80 w-full"><canvas id="topProductsChart"></canvas></div></section>
       <!-- TABLA DE VENTAS CON PÍLDORAS DE CATEGORÍAS Y ORDENAMIENTO -->
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-2">
-        <div class="p-4 border-b flex flex-wrap justify-between items-center gap-3">
-          <p class="text-xs text-slate-500 font-bold" id="prodTableRecordCount">0 productos</p>
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- SELECTOR DE TAMAÑO DE FOTOS -->
-            <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs mr-1">
-              <span class="text-[10px] font-bold text-slate-400 px-1.5 uppercase select-none">Fotos:</span>
-              <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold transition" data-size="sm">S</button>
-              <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="md">M</button>
-              <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="lg">L</button>
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <!-- BARRA DE HERRAMIENTAS Y PÍLDORAS PEGADA ARRIBA (STICKY) -->
+        <div class="sticky top-[53px] z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 rounded-t-xl shadow-xs space-y-2 pb-2">
+          <div class="p-4 pb-0 flex flex-wrap justify-between items-center gap-3">
+            <p class="text-xs text-slate-500 font-bold" id="prodTableRecordCount">0 productos</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs mr-1">
+                <span class="text-[10px] font-bold text-slate-400 px-1.5 uppercase select-none">Fotos:</span>
+                <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold transition" data-size="sm">S</button>
+                <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="md">M</button>
+                <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="lg">L</button>
+              </div>
+              <label class="flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 cursor-pointer select-none"><input type="checkbox" id="chkOnlyLosses" class="rounded text-rose-600"><span>⚠️ Solo con pérdida</span></label>
+              <input type="text" id="prodSearchInput" placeholder="Filtrar producto..." class="border rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
+          </div>
 
-            <label class="flex items-center gap-1.5 text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200 cursor-pointer"><input type="checkbox" id="chkOnlyLosses" class="rounded text-rose-600"><span>⚠️ Solo con pérdida</span></label>
-            <input type="text" id="prodSearchInput" placeholder="Filtrar producto..." class="border rounded-lg px-3 py-1.5 text-xs w-64">
+          <div class="px-4 overflow-x-auto">
+            <div id="salesCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
+              <button id="pillSalesCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
+            </div>
           </div>
         </div>
 
-        <!-- PÍLDORAS DE CATEGORÍAS EN VENTAS -->
-        <div class="px-4 pb-1 overflow-x-auto">
-          <div id="salesCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
-            <button id="pillSalesCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
-            <!-- Las demás categorías se cargan dinámicamente aquí -->
-          </div>
-        </div>
-
-        <!-- TABLA CON ENCABEZADOS CLICKEABLES PARA ORDENAR -->
+        <!-- TABLA CON SCROLL NATURAL -->
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
@@ -213,24 +212,16 @@
                 <th class="py-3 px-4">Foto</th>
                 <th class="py-3 px-4">Producto</th>
                 <th class="py-3 px-4">Categoría</th>
-                
-                <!-- ENCABEZADO ORDENABLE: UNIDADES -->
                 <th id="thSortUnits" class="py-3 px-4 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por unidades">
                   Unidades <span id="iconSortUnits" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                
                 <th class="py-3 px-4 text-right">Precio Prom.</th>
-                
-                <!-- ENCABEZADO ORDENABLE: VENTAS -->
                 <th id="thSortSales" class="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por ventas">
                   Ventas ($) <span id="iconSortSales" class="text-indigo-600 ml-0.5 font-bold">↓</span>
                 </th>
-                
-                <!-- ENCABEZADO ORDENABLE: GANANCIA -->
                 <th id="thSortProfit" class="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por ganancia">
                   Ganancia ($) <span id="iconSortProfit" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                
                 <th class="py-3 px-4 text-right">Margen</th>
               </tr>
             </thead>
@@ -263,72 +254,69 @@
         </div>
       </section>
 
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-3">
-        <div class="p-4 border-b flex flex-wrap justify-between items-center gap-3">
-          <div class="w-full sm:w-80">
-            <input type="text" id="invSearchInput" placeholder="🔍 Buscar por nombre o SKU..." class="w-full border rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-                      <!-- BOTÓN TOGGLE: MOSTRAR/OCULTAR FECHA DE ALTA -->
-                      <button id="btnToggleCreatedCol" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1 select-none" title="Mostrar u ocultar columna de fecha de alta">
-                        <span>🕒</span> Fecha Alta
-                      </button>
-
-                      <!-- SELECTOR DE TAMAÑO DE FOTOS (INVENTARIO) -->
-                      <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs">
-                        <span class="text-[10px] font-bold text-slate-400 px-1.5 uppercase select-none">Fotos:</span>
-                        <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold transition" data-size="sm">S</button>
-                        <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="md">M</button>
-                        <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="lg">L</button>
-                      </div>
-                      <p class="text-xs text-slate-500 font-semibold" id="invTableCount">Cargando inventario...</p>
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <!-- BARRA SUPERIOR Y PÍLDORAS PEGADA ARRIBA (STICKY) -->
+              <div class="sticky top-[53px] z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 rounded-t-xl shadow-xs space-y-2 pb-2">
+                <div class="p-4 pb-0 flex flex-wrap justify-between items-center gap-3">
+                  <div class="w-full sm:w-80">
+                    <input type="text" id="invSearchInput" placeholder="🔍 Buscar por nombre o SKU..." class="w-full border rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnToggleCreatedCol" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1 select-none" title="Mostrar u ocultar columna de fecha de alta">
+                      <span>🕒</span> Fecha Alta
+                    </button>
+                    <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs">
+                      <span class="text-[10px] font-bold text-slate-400 px-1.5 uppercase select-none">Fotos:</span>
+                      <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-bold transition" data-size="sm">S</button>
+                      <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="md">M</button>
+                      <button type="button" class="btn-thumb-size px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-size="lg">L</button>
                     </div>
+                    <p class="text-xs text-slate-500 font-semibold" id="invTableCount">Cargando inventario...</p>
                   </div>
+                </div>
 
-                  <!-- Píldoras de Categorías -->
-                  <div class="px-4 pb-2 overflow-x-auto">
-                    <div id="invCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
-                      <button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
-                      <button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Sin stock</button>
-                    </div>
+                <div class="px-4 overflow-x-auto">
+                  <div id="invCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
+                    <button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
+                    <button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Sin stock</button>
                   </div>
+                </div>
+              </div>
 
-                  <!-- TABLA INVENTARIO CON SCROLL INTERNO Y ENCABEZADO FIJO -->
-                  <div class="overflow-auto max-h-[62vh] border-t border-slate-100">
-                    <table class="w-full text-left border-collapse text-xs">
-                      <thead class="sticky top-0 bg-slate-50 z-10 shadow-sm">
-                        <tr class="text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
-                          <th class="py-3 px-3">#</th>
-                          <th class="py-3 px-3">Foto</th>
-                          <th id="thInvSortName" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition" title="Ordenar por nombre">
-                            Producto / SKU <span id="iconInvSortName" class="text-slate-300 ml-0.5 font-bold">↕</span>
-                          </th>
-                          <th class="py-3 px-3">Categoría</th>
-                          
-                          <!-- COLUMNA FECHA ALTA (CONTROLADA POR TOGGLE) -->
-                          <th id="thInvSortCreated" class="hidden py-3 px-3 cursor-pointer hover:bg-slate-100 transition text-center" title="Ordenar por fecha de alta">
-                            Fecha Alta <span id="iconInvSortCreated" class="text-indigo-600 ml-0.5 font-bold">↓</span>
-                          </th>
-                          
-                          <th id="thInvSortPrice" class="py-3 px-3 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
-                            Precio <span id="iconInvSortPrice" class="text-slate-300 ml-0.5 font-bold">↕</span>
-                          </th>
-                          <th class="py-3 px-3 text-right">Costo</th>
-                          <th id="thInvSortStock" class="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por stock">
-                            Stock <span id="iconInvSortStock" class="text-slate-300 ml-0.5 font-bold">↕</span>
-                          </th>
-                          <th class="py-3 px-3 text-right">Ganancia</th>
-                          <th class="py-3 px-4 text-right">Margen</th>
-                          <th class="py-3 px-3 text-right">Total Valor</th>
-                        </tr>
-                      </thead>
-                      <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
-                    </table>
-                  </div>
-        <div id="invInfiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500">
-          <span id="invLoadingText">Desplázate para cargar más artículos...</span>
-        </div>
-      </section>
+              <!-- TABLA CON SCROLL NATURAL -->
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
+                      <th class="py-3 px-3">#</th>
+                      <th class="py-3 px-3">Foto</th>
+                      <th id="thInvSortName" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition" title="Ordenar por nombre">
+                        Producto / SKU <span id="iconInvSortName" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                      </th>
+                      <th class="py-3 px-3">Categoría</th>
+                      <th id="thInvSortCreated" class="hidden py-3 px-3 cursor-pointer hover:bg-slate-100 transition text-center" title="Ordenar por fecha de alta">
+                        Fecha Alta <span id="iconInvSortCreated" class="text-indigo-600 ml-0.5 font-bold">↓</span>
+                      </th>
+                      <th id="thInvSortPrice" class="py-3 px-3 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
+                        Precio <span id="iconInvSortPrice" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                      </th>
+                      <th class="py-3 px-3 text-right">Costo</th>
+                      <th id="thInvSortStock" class="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por stock">
+                        Stock <span id="iconInvSortStock" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                      </th>
+                      <th class="py-3 px-3 text-right">Ganancia</th>
+                      <th class="py-3 px-4 text-right">Margen</th>
+                      <th class="py-3 px-3 text-right">Total Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+              <div id="invInfiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500">
+                <span id="invLoadingText">Desplázate para cargar más artículos...</span>
+              </div>
+            </section>
+
     </div>
 
   </main>
