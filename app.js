@@ -228,18 +228,22 @@ function getDateQueryParams() {
 var tabBtnClients = document.getElementById("tabBtnClients");
 var tabBtnSales = document.getElementById("tabBtnSales");
 var tabBtnInventory = document.getElementById("tabBtnInventory");
+var tabBtnTransactions = document.getElementById("tabBtnTransactions");
 var analyticsPeriodSection = document.getElementById("analyticsPeriodSection");
 var viewClients = document.getElementById("viewClients");
 var viewProducts = document.getElementById("viewProducts");
 var viewInventory = document.getElementById("viewInventory");
+var viewTransactions = document.getElementById("viewTransactions");
 
 tabBtnClients.onclick = function() { switchTab("clients"); };
 tabBtnSales.onclick = function() { switchTab("sales"); };
 tabBtnInventory.onclick = function() { switchTab("inventory"); };
+tabBtnTransactions.onclick = function() { switchTab("transactions"); };
 
+  
 function switchTab(t) {
   activeTab = t;
-  [tabBtnClients, tabBtnSales, tabBtnInventory].forEach(function(btn) {
+  [tabBtnClients, tabBtnSales, tabBtnInventory, tabBtnTransactions].forEach(function(btn) {
     btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all";
   });
 
@@ -265,6 +269,11 @@ function switchTab(t) {
     viewClients.classList.add("hidden");
     viewProducts.classList.add("hidden");
     initInventoryView();
+  } else if (t === "transactions") {
+    tabBtnTransactions.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
+    analyticsPeriodSection.classList.add("hidden");
+    viewTransactions.classList.remove("hidden");
+    initTransactionsView(); // 👈 Inicia la vista de comprobantes
   }
 }
 
@@ -1106,6 +1115,214 @@ document.getElementById("productsGlobalTableBody").addEventListener("click", fun
     }
   }
 });
+
+// ==================== MÓDULO DE TRANSACCIONES / COMPROBANTES ====================
+var txPeriodMode = "weekly";
+var allTransactions = [];
+var txCurrentPage = 1;
+var txIsLoading = false;
+var txHasMore = true;
+var txSearchTerm = "";
+
+function getTxTimestamps() {
+  var now = new Date();
+  var start, end;
+
+  if (txPeriodMode === "daily") {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  } else if (txPeriodMode === "weekly") {
+    var day = now.getDay() || 7; // Lunes como 1
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6, 23, 59, 59, 999);
+  } else if (txPeriodMode === "monthly") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (txPeriodMode === "yearly") {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  } else if (txPeriodMode === "custom") {
+    var sVal = document.getElementById("txCustomStartDate").value;
+    var eVal = document.getElementById("txCustomEndDate").value;
+    start = new Date(sVal + "T00:00:00");
+    end = new Date(eVal + "T23:59:59.999");
+  }
+
+  // Convertir al horario exacto UTC-3 de Argentina
+  var sIso = start.toISOString().split("T")[0];
+  var eIso = end.toISOString().split("T")[0];
+
+  return {
+    startMs: new Date(getArgentinaStartISO(sIso)).getTime(),
+    endMs: new Date(getArgentinaEndISO(eIso)).getTime()
+  };
+}
+
+async function initTransactionsView() {
+  syncTxPeriodButtons();
+  if (allTransactions.length === 0) {
+    var now = new Date();
+    document.getElementById("txCustomStartDate").value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    document.getElementById("txCustomEndDate").value = now.toISOString().split("T")[0];
+    resetAndFetchTransactions();
+  }
+}
+
+function syncTxPeriodButtons() {
+  var modes = ["daily", "weekly", "monthly", "yearly", "custom"];
+  var map = {
+    daily: "btnTxPeriodDaily",
+    weekly: "btnTxPeriodWeekly",
+    monthly: "btnTxPeriodMonthly",
+    yearly: "btnTxPeriodYearly",
+    custom: "btnTxPeriodCustom"
+  };
+
+  modes.forEach(function(m) {
+    var btn = document.getElementById(map[m]);
+    if (m === txPeriodMode) {
+      btn.className = "px-2.5 py-1 rounded font-bold bg-white text-indigo-600 shadow-sm transition";
+    } else {
+      btn.className = "px-2.5 py-1 rounded font-semibold text-slate-600 hover:text-slate-900 transition";
+    }
+  });
+
+  var customCont = document.getElementById("txCustomDateContainer");
+  if (txPeriodMode === "custom") customCont.classList.remove("hidden");
+  else customCont.classList.add("hidden");
+}
+
+["daily", "weekly", "monthly", "yearly", "custom"].forEach(function(m) {
+  var map = { daily: "btnTxPeriodDaily", weekly: "btnTxPeriodWeekly", monthly: "btnTxPeriodMonthly", yearly: "btnTxPeriodYearly", custom: "btnTxPeriodCustom" };
+  document.getElementById(map[m]).onclick = function() {
+    txPeriodMode = m;
+    syncTxPeriodButtons();
+    if (m !== "custom") resetAndFetchTransactions();
+  };
+});
+
+document.getElementById("btnApplyTxCustom").onclick = function() { resetAndFetchTransactions(); };
+
+function resetAndFetchTransactions() {
+  allTransactions = [];
+  txCurrentPage = 1;
+  txHasMore = true;
+  document.getElementById("transactionsTableBody").innerHTML = '<tr><td colspan="6" class="text-center py-8 text-indigo-600 font-medium">Cargando comprobantes...</td></tr>';
+  fetchTxBalance();
+  fetchTransactionsPage();
+}
+
+async function fetchTxBalance() {
+  var ts = getTxTimestamps();
+  var url = "https://core-api-gateway.treinta.co/balance/" + storeId + "?startDate=" + ts.startMs + "&endDate=" + ts.endMs;
+  try {
+    var res = await fetch(url, { headers: getHeaders() });
+    if (res.ok) {
+      var d = await res.json();
+      document.getElementById("txKpiBalance").textContent = currencyFormatter.format(d.utility || 0);
+      document.getElementById("txKpiSales").textContent = currencyFormatter.format(d.sales || 0);
+      document.getElementById("txKpiSpendings").textContent = currencyFormatter.format(d.spendings || 0);
+    }
+  } catch(e) { console.error("Error balance:", e); }
+}
+
+async function fetchTransactionsPage() {
+  if (txIsLoading || !txHasMore) return;
+  txIsLoading = true;
+  document.getElementById("txLoadingText").textContent = "Cargando comprobantes...";
+
+  var ts = getTxTimestamps();
+  var url = "https://core-api-gateway.treinta.co/transactions/stores/" + storeId +
+    "?startDate=" + ts.startMs +
+    "&endDate=" + ts.endMs +
+    "&transactionTypeId=1&transactionTypeId=3&transactionTypeId=4&transactionTypeId=14" +
+    "&transactionStatusId=1&transactionStatusId=3&transactionStatusId=6" +
+    "&page=" + txCurrentPage +
+    "&limit=100";
+
+  try {
+    var res = await fetch(url, { headers: getHeaders() });
+    if (res.ok) {
+      var items = await res.json();
+      allTransactions = allTransactions.concat(items || []);
+      txHasMore = (items || []).length === 100;
+      txCurrentPage++;
+
+      renderTransactionsTable();
+
+      if (txHasMore) {
+        document.getElementById("txLoadingText").textContent = "Desplázate para cargar más comprobantes...";
+      } else {
+        document.getElementById("txLoadingText").textContent = "✅ Todos los comprobantes cargados (" + allTransactions.length + ")";
+      }
+    }
+  } catch(e) {
+    console.error("Error comprobantes:", e);
+    document.getElementById("txLoadingText").textContent = "Error al cargar comprobantes.";
+  } finally {
+    txIsLoading = false;
+  }
+}
+
+function renderTransactionsTable() {
+  var body = document.getElementById("transactionsTableBody");
+  var term = txSearchTerm.toLowerCase();
+  
+  var filtered = allTransactions.filter(function(tx) {
+    var cName = (tx.contactName || "").toLowerCase();
+    var cDesc = (tx.description || "").toLowerCase();
+    var cNum = (tx.transactionCount || "").toString();
+    return cName.includes(term) || cDesc.includes(term) || cNum.includes(term);
+  });
+
+  document.getElementById("txTableCount").textContent = "Mostrando " + filtered.length + " de " + allTransactions.length + " comprobantes";
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron comprobantes para este período o búsqueda.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = "";
+  filtered.forEach(function(tx) {
+    var tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-50 transition-colors";
+
+    // Formatear fecha y hora
+    var dateMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : 0);
+    var dateFormatted = "-";
+    if (dateMs) {
+      var d = new Date(dateMs);
+      dateFormatted = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }) + " " +
+                      d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    var clientDisplay = tx.contactName
+      ? '<span class="font-bold text-slate-900">' + tx.contactName + '</span>'
+      : '<span class="text-slate-400 italic">Consumidor Final</span>';
+
+    var paymentMethod = tx.paymentTypeId === 1 ? "Efectivo" : "Otro";
+
+    tr.innerHTML = '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + (tx.transactionCount || tx.id.slice(0, 8)) + '</td>' +
+                   '<td class="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">' + dateFormatted + '</td>' +
+                   '<td class="py-3 px-4">' + clientDisplay + '</td>' +
+                   '<td class="py-3 px-4 text-slate-600">' + (tx.description || "-") + '</td>' +
+                   '<td class="py-3 px-4 text-center"><span class="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-600 text-[10px]">' + paymentMethod + '</span></td>' +
+                   '<td class="py-3 px-4 text-right font-bold text-slate-900 text-sm">' + currencyFormatter.format(tx.value || 0) + '</td>';
+
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById("txSearchInput").oninput = function(e) {
+  txSearchTerm = e.target.value.trim();
+  renderTransactionsTable();
+};
+
+new IntersectionObserver(function(entries) {
+  if (entries[0].isIntersecting && activeTab === "transactions" && txHasMore && !txIsLoading) {
+    fetchTransactionsPage();
+  }
+}, { root: null, rootMargin: "300px", threshold: 0 }).observe(document.getElementById("txInfiniteScrollTrigger"));
 
 // Activar delegación del hover de zoom en ambas tablas
 attachHoverPreviewEvents("productsGlobalTableBody");
