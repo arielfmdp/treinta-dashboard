@@ -1398,41 +1398,6 @@ async function initTransactionsView() {
   }
 }
 
-function syncTxPeriodButtons() {
-  var modes = ["daily", "weekly", "monthly", "yearly", "custom"];
-  var map = {
-    daily: "btnTxPeriodDaily",
-    weekly: "btnTxPeriodWeekly",
-    monthly: "btnTxPeriodMonthly",
-    yearly: "btnTxPeriodYearly",
-    custom: "btnTxPeriodCustom"
-  };
-
-  modes.forEach(function(m) {
-    var btn = document.getElementById(map[m]);
-    if (m === txPeriodMode) {
-      btn.className = "px-2.5 py-1 rounded font-bold bg-white text-indigo-600 shadow-sm transition";
-    } else {
-      btn.className = "px-2.5 py-1 rounded font-semibold text-slate-600 hover:text-slate-900 transition";
-    }
-  });
-
-  var customCont = document.getElementById("txCustomDateContainer");
-  if (txPeriodMode === "custom") customCont.classList.remove("hidden");
-  else customCont.classList.add("hidden");
-}
-
-["daily", "weekly", "monthly", "yearly", "custom"].forEach(function(m) {
-  var map = { daily: "btnTxPeriodDaily", weekly: "btnTxPeriodWeekly", monthly: "btnTxPeriodMonthly", yearly: "btnTxPeriodYearly", custom: "btnTxPeriodCustom" };
-  document.getElementById(map[m]).onclick = function() {
-    txPeriodMode = m;
-    syncTxPeriodButtons();
-    if (m !== "custom") resetAndFetchTransactions();
-  };
-});
-
-document.getElementById("btnApplyTxCustom").onclick = function() { resetAndFetchTransactions(); };
-
 function resetAndFetchTransactions() {
   allTransactions = [];
   txCurrentPage = 1;
