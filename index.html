@@ -444,16 +444,16 @@
   <div id="modalTxDetail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 sm:p-6">
     <div id="modalTxDetailCard" class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col">
       
-      <!-- Encabezado Modal -->
-      <div class="flex justify-between items-start border-b border-slate-100 pb-3 flex-shrink-0">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold">🧾</div>
-          <div>
-            <h3 class="text-sm font-bold text-slate-900 leading-tight" id="modalTxTitle">Detalle de la transacción</h3>
+      <!-- Encabezado Modal con Truncate a 1 línea -->
+      <div class="flex justify-between items-start border-b border-slate-100 pb-3 flex-shrink-0 gap-3">
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold flex-shrink-0">🧾</div>
+          <div class="min-w-0 flex-1">
+            <h3 class="text-sm font-bold text-slate-900 leading-tight truncate" id="modalTxTitle" title="Detalle de la transacción">Detalle de la transacción</h3>
             <p class="text-[11px] text-slate-400 font-mono" id="modalTxSubtitle">Cargando...</p>
           </div>
         </div>
-        <button id="btnCloseTxDetail" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        <button id="btnCloseTxDetail" class="text-slate-400 hover:text-slate-600 text-2xl leading-none flex-shrink-0">&times;</button>
       </div>
 
       <!-- Tarjeta Financiera (Idéntica a la captura) -->

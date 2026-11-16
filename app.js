@@ -1136,6 +1136,31 @@ var txDatePopupModal = document.getElementById("txDatePopupModal");
 var txPopupContent = document.getElementById("txPopupContent");
 var lblTxCurrentRange = document.getElementById("lblTxCurrentRange");
 
+// Diccionario en memoria: userId ➔ Nombre de Vendedor configurado
+var employeesMap = {};
+try {
+  employeesMap = JSON.parse(localStorage.getItem("t_employees_map") || "{}");
+} catch(e) {}
+
+async function ensureEmployeesMap() {
+  if (Object.keys(employeesMap).length > 0) return; // Si ya está en caché, no gasta red
+  try {
+    var res = await fetch("https://core-api-gateway.treinta.co/employees/get-employees/" + storeId + "?onlyEmployees=false", { headers: getHeaders() });
+    if (res.ok) {
+      var list = await res.json();
+      (list || []).forEach(function(item) {
+        if (item.employee) {
+          if (item.employee.userId) employeesMap[item.employee.userId] = item.employee.name;
+          if (item.employee.storeEmployeeRegisterId) employeesMap[item.employee.storeEmployeeRegisterId] = item.employee.name;
+        }
+      });
+      localStorage.setItem("t_employees_map", JSON.stringify(employeesMap));
+    }
+  } catch(e) {
+    console.error("Error al cargar empleados:", e);
+  }
+}
+
 // Conversión directa a milisegundos de Treinta en zona horaria Argentina (UTC-3)
 function toTreintaStartMs(year, month, day) {
   return Date.UTC(year, month - 1, day, 3, 0, 0, 0);
@@ -1414,6 +1439,7 @@ document.addEventListener("click", function(e) {
 });
 
 async function initTransactionsView() {
+  ensureEmployeesMap();
   updateTxRangeLabel();
   if (allTransactions.length === 0) {
     resetAndFetchTransactions();
@@ -1582,8 +1608,11 @@ async function openTransactionDetail(txId) {
     var contact = tx.contact || {};
     var user = tx.user || {};
 
-    // 1. Títulos
-    document.getElementById("modalTxTitle").textContent = tx.description || "Comprobante de venta";
+    // 1. Títulos: limitado a 1 línea con tooltip
+    var descText = tx.description || "Comprobante de venta";
+    var titleEl = document.getElementById("modalTxTitle");
+    titleEl.textContent = descText;
+    titleEl.title = descText; // Al pasar el mouse muestra la descripción completa
     document.getElementById("modalTxSubtitle").textContent = "Transacción #" + (tx.transactionCount || tx.id.slice(0, 8));
 
     // 2. Tarjeta Financiera
@@ -1602,9 +1631,14 @@ async function openTransactionDetail(txId) {
       discRow.classList.add("hidden");
     }
 
-    // Metadatos
+    // Metadatos: cruce de Vendedor por userId
     document.getElementById("modalTxClient").textContent = contact.name || "Consumidor Final";
-    document.getElementById("modalTxUser").textContent = (user.firstName ? user.firstName + " " + (user.lastName || "") : "-").trim();
+    
+    var empName = employeesMap[tx.userId] || employeesMap[user.id] || "";
+    if (!empName && (user.firstName || user.lastName)) {
+      empName = (user.firstName + " " + (user.lastName || "")).trim();
+    }
+    document.getElementById("modalTxUser").textContent = empName || "Vendedor";
     document.getElementById("modalTxPayment").textContent = tx.paymentTypeId === 1 ? "Efectivo" : "Otro";
 
     // Fecha
