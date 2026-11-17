@@ -1727,6 +1727,7 @@ function printReceipt(layoutType) {
   var clientName = contact.name || "Consumidor Final";
   var txNumber = tx.transactionCount || tx.id.slice(0, 8);
   var empName = employeesMap[tx.userId] || employeesMap[user.id] || "Vendedor Millenial";
+  var logoUrl = "https://arielfmdp.github.io/treinta-dashboard/logo.png";
 
   // Fecha compacta 24hs
   var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : Date.now());
@@ -1747,9 +1748,10 @@ function printReceipt(layoutType) {
       var cant = p.amount || 1;
       var price = p.price || 0;
       var lineTot = cant * price;
+      // Removida la redundancia del SKU: solo muestra el nombre limpio
       rowsHtml += '<tr style="border-bottom: 1px solid #e2e8f0;">' +
                     '<td style="padding: 6px 8px; text-align: center; color: #64748b; font-size: 11px;">' + (i + 1) + '</td>' +
-                    '<td style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b;">' + (p.name || "Artículo") + (p.sku ? ' <span style="font-weight: normal; color: #94a3b8; font-size: 9px;">(SKU: ' + p.sku + ')</span>' : '') + '</td>' +
+                    '<td style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b;">' + (p.name || "Artículo") + '</td>' +
                     '<td style="padding: 6px 8px; text-align: center; font-weight: bold; font-size: 11px;">' + cant + '</td>' +
                     '<td style="padding: 6px 8px; text-align: right; font-size: 11px;">' + currencyFormatter.format(price) + '</td>' +
                     '<td style="padding: 6px 8px; text-align: right; font-weight: bold; font-size: 11px;">' + currencyFormatter.format(lineTot) + '</td>' +
@@ -1760,9 +1762,11 @@ function printReceipt(layoutType) {
       '<style>' +
         '@page { size: A4 portrait; margin: 12mm 15mm; }' +
         'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 12px; }' +
-        '.header-box { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px; }' +
-        '.logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; }' +
-        '.doc-type { font-size: 14px; font-weight: 800; color: #475569; text-transform: uppercase; }' +
+        '.header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; }' +
+        '.logo-container { display: flex; align-items: center; gap: 10px; }' +
+        '.logo-img { height: 38px; max-width: 60px; object-fit: contain; }' +
+        '.logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; line-height: 1; }' +
+        '.doc-type { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; }' +
         '.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 11px; }' +
         'table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }' +
         'th { background: #0f172a; color: #ffffff; padding: 6px 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }' +
@@ -1773,9 +1777,12 @@ function printReceipt(layoutType) {
         '.sign-line { width: 200px; border-top: 1px dashed #94a3b8; text-align: center; padding-top: 5px; }' +
       '</style></head><body>' +
         '<div class="header-box">' +
-          '<div>' +
-            '<div class="logo-text">TRAPOS MDP</div>' +
-            '<div style="font-size: 11px; color: #64748b; margin-top: 2px;">Distribuidora Mayorista de Limpieza</div>' +
+          '<div class="logo-container">' +
+            '<img src="' + logoUrl + '" class="logo-img" alt="Logo" onerror="this.style.display=\x27none\x27;">' +
+            '<div>' +
+              '<div class="logo-text">TRAPOS MDP</div>' +
+              '<div style="font-size: 11px; color: #64748b; margin-top: 3px;">Distribuidora Mayorista</div>' +
+            '</div>' +
           '</div>' +
           '<div style="text-align: right;">' +
             '<div class="doc-type">Comprobante de Venta</div>' +
@@ -1830,13 +1837,16 @@ function printReceipt(layoutType) {
         '@page { size: A4 portrait; margin: 8mm 10mm; }' +
         'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 10px; }' +
         '.ticket-strip { width: 92mm; min-height: 270mm; border-right: 1px dashed #94a3b8; padding-right: 8mm; box-sizing: border-box; }' +
-        '.center-text { text-align: center; }' +
-        '.bold { font-weight: bold; }' +
+        '.header-strip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }' +
+        '.logo-img-small { height: 26px; max-width: 40px; object-fit: contain; }' +
         '.divider { border-top: 1px solid #0f172a; margin: 6px 0; }' +
       '</style></head><body>' +
         '<div class="ticket-strip">' +
-          '<div class="center-text">' +
-            '<div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>' +
+          '<div style="text-align: center;">' +
+            '<div class="header-strip">' +
+              '<img src="' + logoUrl + '" class="logo-img-small" alt="Logo" onerror="this.style.display=\x27none\x27;">' +
+              '<div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>' +
+            '</div>' +
             '<div style="font-size: 9px; color: #64748b;">Distribuidora Mayorista</div>' +
             '<div style="font-size: 11px; font-weight: bold; margin-top: 4px; color: #4f46e5;">Comprobante #' + txNumber + '</div>' +
           '</div>' +
@@ -1866,7 +1876,7 @@ function printReceipt(layoutType) {
       '</body></html>';
   }
 
-  // Creación de iframe invisible para imprimir directo sin popup blockers
+  // Creación de iframe invisible para imprimir
   var pFrame = document.createElement("iframe");
   pFrame.style.position = "fixed";
   pFrame.style.top = "-9999px";
