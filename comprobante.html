@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Comprobante #{{TX_NUMBER}} - TRAPOS MDP</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ================= FORMATO 1: A4 COMPLETO ================= */
+    body.layout-full {
+      font-size: 12px;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    body.layout-full .half-only { display: none !important; }
+    body.layout-full .header-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    body.layout-full .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    body.layout-full .logo-img {
+      height: 42px;
+      max-width: 65px;
+      object-fit: contain;
+    }
+    body.layout-full .logo-text {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+    body.layout-full .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 20px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 11px;
+    }
+    body.layout-full table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+    }
+    body.layout-full th {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 6px 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    body.layout-full td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 11px;
+    }
+    body.layout-full .totals-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 24px;
+    }
+    body.layout-full .totals-table {
+      width: 260px;
+      font-size: 11px;
+      border-collapse: collapse;
+    }
+    body.layout-full .totals-table td {
+      padding: 4px 6px;
+      border: none;
+    }
+    body.layout-full .sign-box {
+      margin-top: 35px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
+    }
+    body.layout-full .sign-line {
+      width: 200px;
+      border-top: 1px dashed #94a3b8;
+      text-align: center;
+      padding-top: 5px;
+    }
+
+    /* ================= FORMATO 2: MEDIA A4 VERTICAL (105mm) ================= */
+    body.layout-half {
+      font-size: 10px;
+    }
+    body.layout-half .full-only { display: none !important; }
+    body.layout-half .ticket-strip {
+      width: 92mm;
+      min-height: 270mm;
+      border-right: 1px dashed #94a3b8;
+      padding-right: 8mm;
+    }
+    body.layout-half .header-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    body.layout-half .logo-img-small {
+      height: 28px;
+      max-width: 45px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body class="{{LAYOUT_CLASS}}">
+
+  <!-- ================= VISTA A4 COMPLETA ================= -->
+  <div class="full-only">
+    <div class="header-box">
+      <div class="logo-container">
+        <img id="receiptLogoImgFull" src="{{LOGO_URL}}" class="logo-img" alt="Logo">
+        <div>
+          <div class="logo-text">TRAPOS MDP</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 3px;">Distribuidora Mayorista</div>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase;">Comprobante de Venta</div>
+        <div style="font-size: 15px; font-weight: 800; color: #4f46e5; margin-top: 2px;">#{{TX_NUMBER}}</div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div><strong style="color: #64748b;">Cliente:</strong> {{CLIENTE}}</div>
+      <div><strong style="color: #64748b;">Fecha y Hora:</strong> {{FECHA_HORA}}</div>
+      <div><strong style="color: #64748b;">Vendedor:</strong> {{VENDEDOR}}</div>
+      <div><strong style="color: #64748b;">Método de Pago:</strong> {{MEDIO_PAGO}}</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25px;">#</th>
+          <th style="text-align: left;">Descripción del Artículo</th>
+          <th style="width: 45px; text-align: center;">Cant.</th>
+          <th style="width: 85px; text-align: right;">Precio Unit.</th>
+          <th style="width: 95px; text-align: right;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{FILAS_PRODUCTOS_FULL}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <table class="totals-table">
+        <tr><td>Subtotal:</td><td style="text-align: right; font-weight: bold;">{{SUBTOTAL}}</td></tr>
+        {{DESCUENTO_BLOQUE}}
+        <tr style="border-top: 2px solid #0f172a; font-size: 14px;">
+          <td style="font-weight: 900; padding-top: 6px;">TOTAL:</td>
+          <td style="text-align: right; font-weight: 900; padding-top: 6px; color: #0f172a;">{{TOTAL}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="sign-box">
+      <div>Comprobante no válido como factura.</div>
+      <div class="sign-line">Firma y Aclaración de Recepción</div>
+    </div>
+  </div>
+
+  <!-- ================= VISTA MEDIA A4 VERTICAL ================= -->
+  <div class="half-only">
+    <div class="ticket-strip">
+      <div style="text-align: center;">
+        <div class="header-strip">
+          <img id="receiptLogoImgHalf" src="{{LOGO_URL}}" class="logo-img-small" alt="Logo">
+          <div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>
+        </div>
+        <div style="font-size: 9px; color: #64748b;">Distribuidora Mayorista</div>
+        <div style="font-size: 11px; font-weight: bold; margin-top: 4px; color: #4f46e5;">Comprobante #{{TX_NUMBER}}</div>
+      </div>
+
+      <div style="border-top: 1px solid #0f172a; margin: 6px 0;"></div>
+
+      <div style="font-size: 9.5px; line-height: 1.4; margin-bottom: 6px;">
+        <div><span style="color: #64748b;">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
+        <div><span style="color: #64748b;">Fecha:</span> {{FECHA_HORA}}</div>
+        <div><span style="color: #64748b;">Vendedor:</span> {{VENDEDOR}}</div>
+        <div><span style="color: #64748b;">Pago:</span> {{MEDIO_PAGO}}</div>
+      </div>
+
+      <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 4px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+        Detalle de Artículos ({{TOTAL_ITEMS}})
+      </div>
+      <div>
+        {{FILAS_PRODUCTOS_HALF}}
+      </div>
+
+      <div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #0f172a; font-size: 10px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>Subtotal:</span><span>{{SUBTOTAL}}</span>
+        </div>
+        {{DESCUENTO_BLOQUE_HALF}}
+        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900; margin-top: 4px; border-top: 1px dashed #0f172a; padding-top: 3px;">
+          <span>TOTAL:</span><span>{{TOTAL}}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 25px; text-align: center; border-top: 1px dashed #94a3b8; padding-top: 5px; font-size: 8.5px; color: #64748b;">
+        Firma Conforme Recepción
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

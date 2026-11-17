@@ -1711,10 +1711,10 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
-// ==================== MOTOR DE IMPRESIÓN (TRAPOS MDP) ====================
+// ==================== MOTOR DE IMPRESIÓN DESACOPLADO ====================
 var currentTxDetailData = null;
 
-function printReceipt(layoutType) {
+async function printReceipt(layoutType) {
   if (!currentTxDetailData) return;
 
   var data = currentTxDetailData;
@@ -1727,177 +1727,111 @@ function printReceipt(layoutType) {
   var clientName = contact.name || "Consumidor Final";
   var txNumber = tx.transactionCount || tx.id.slice(0, 8);
   var empName = employeesMap[tx.userId] || employeesMap[user.id] || "Vendedor Millenial";
-  var logoUrl = "https://arielfmdp.github.io/treinta-dashboard/logo.png";
+  // Nombre exacto con mayúsculas corregido:
+  var logoUrl = "https://arielfmdp.github.io/treinta-dashboard/LOGO.png";
 
-  // Fecha compacta 24hs
   var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : Date.now());
   var dObj = new Date(dMs);
   var dateStr = ("0" + dObj.getDate()).slice(-2) + "/" + ("0" + (dObj.getMonth() + 1)).slice(-2) + "/" + dObj.getFullYear() + " " +
                 ("0" + dObj.getHours()).slice(-2) + ":" + ("0" + dObj.getMinutes()).slice(-2);
 
-  var subtotalVal = totals.subtotal || totals.total || tx.value || 0;
-  var discountVal = totals.totalDiscount || 0;
-  var totalVal = totals.total || tx.value || 0;
+  var subtotalVal = currencyFormatter.format(totals.subtotal || totals.total || tx.value || 0);
+  var discountNum = totals.totalDiscount || 0;
+  var totalVal = currencyFormatter.format(totals.total || tx.value || 0);
 
-  var receiptHtml = "";
+  // Armar las filas de productos
+  var rowsFull = "";
+  var rowsHalf = "";
+  products.forEach(function(p, i) {
+    var cant = p.amount || 1;
+    var price = p.price || 0;
+    var lineTot = cant * price;
 
-  if (layoutType === "a4-full") {
-    // --- FORMATO 1: HOJA A4 COMPLETA EXPANDIDA ---
-    var rowsHtml = "";
-    products.forEach(function(p, i) {
-      var cant = p.amount || 1;
-      var price = p.price || 0;
-      var lineTot = cant * price;
-      // Removida la redundancia del SKU: solo muestra el nombre limpio
-      rowsHtml += '<tr style="border-bottom: 1px solid #e2e8f0;">' +
-                    '<td style="padding: 6px 8px; text-align: center; color: #64748b; font-size: 11px;">' + (i + 1) + '</td>' +
-                    '<td style="padding: 6px 8px; font-weight: bold; font-size: 11px; color: #1e293b;">' + (p.name || "Artículo") + '</td>' +
-                    '<td style="padding: 6px 8px; text-align: center; font-weight: bold; font-size: 11px;">' + cant + '</td>' +
-                    '<td style="padding: 6px 8px; text-align: right; font-size: 11px;">' + currencyFormatter.format(price) + '</td>' +
-                    '<td style="padding: 6px 8px; text-align: right; font-weight: bold; font-size: 11px;">' + currencyFormatter.format(lineTot) + '</td>' +
-                  '</tr>';
-    });
+    // Fila A4 Completa
+    rowsFull += '<tr>' +
+                  '<td style="text-align: center; color: #64748b;">' + (i + 1) + '</td>' +
+                  '<td style="font-weight: bold; color: #1e293b;">' + (p.name || "Artículo") + '</td>' +
+                  '<td style="text-align: center; font-weight: bold;">' + cant + '</td>' +
+                  '<td style="text-align: right;">' + currencyFormatter.format(price) + '</td>' +
+                  '<td style="text-align: right; font-weight: bold;">' + currencyFormatter.format(lineTot) + '</td>' +
+                '</tr>';
 
-    receiptHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Remito #' + txNumber + ' - Trapos MDP</title>' +
-      '<style>' +
-        '@page { size: A4 portrait; margin: 12mm 15mm; }' +
-        'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 12px; }' +
-        '.header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; }' +
-        '.logo-container { display: flex; align-items: center; gap: 10px; }' +
-        '.logo-img { height: 38px; max-width: 60px; object-fit: contain; }' +
-        '.logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; line-height: 1; }' +
-        '.doc-type { font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; }' +
-        '.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 11px; }' +
-        'table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }' +
-        'th { background: #0f172a; color: #ffffff; padding: 6px 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }' +
-        '.totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 24px; }' +
-        '.totals-table { width: 260px; font-size: 11px; border-collapse: collapse; }' +
-        '.totals-table td { padding: 4px 6px; }' +
-        '.sign-box { margin-top: 30px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }' +
-        '.sign-line { width: 200px; border-top: 1px dashed #94a3b8; text-align: center; padding-top: 5px; }' +
-      '</style></head><body>' +
-        '<div class="header-box">' +
-          '<div class="logo-container">' +
-            '<img src="' + logoUrl + '" class="logo-img" alt="Logo" onerror="this.style.display=\x27none\x27;">' +
-            '<div>' +
-              '<div class="logo-text">TRAPOS MDP</div>' +
-              '<div style="font-size: 11px; color: #64748b; margin-top: 3px;">Distribuidora Mayorista</div>' +
-            '</div>' +
-          '</div>' +
-          '<div style="text-align: right;">' +
-            '<div class="doc-type">Comprobante de Venta</div>' +
-            '<div style="font-size: 15px; font-weight: 800; color: #4f46e5; margin-top: 2px;">#' + txNumber + '</div>' +
-          '</div>' +
-        '</div>' +
+    // Fila Media A4 Compacta
+    rowsHalf += '<div style="padding: 4px 0; border-bottom: 1px dashed #e2e8f0; font-size: 10px;">' +
+                  '<div style="display: flex; justify-content: space-between; font-weight: bold; color: #1e293b;">' +
+                    '<span style="max-width: 65mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + (p.name || "Artículo") + '</span>' +
+                    '<span>' + currencyFormatter.format(lineTot) + '</span>' +
+                  '</div>' +
+                  '<div style="color: #64748b; font-size: 9px;">' + cant + ' Unid. × ' + currencyFormatter.format(price) + '</div>' +
+                '</div>';
+  });
 
-        '<div class="meta-grid">' +
-          '<div><strong style="color: #64748b;">Cliente:</strong> ' + clientName + '</div>' +
-          '<div><strong style="color: #64748b;">Fecha y Hora:</strong> ' + dateStr + '</div>' +
-          '<div><strong style="color: #64748b;">Vendedor:</strong> ' + empName + '</div>' +
-          '<div><strong style="color: #64748b;">Método de Pago:</strong> ' + (tx.paymentTypeId === 1 ? "Efectivo" : "Cuenta Corriente / Otro") + '</div>' +
-        '</div>' +
+  // Bloques condicionales de descuento
+  var descBlockFull = discountNum > 0
+    ? '<tr><td style="color: #e11d48;">Descuento:</td><td style="text-align: right; font-weight: bold; color: #e11d48;">-' + currencyFormatter.format(discountNum) + '</td></tr>'
+    : '';
+  var descBlockHalf = discountNum > 0
+    ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
+    : '';
 
-        '<table>' +
-          '<thead><tr><th style="width: 25px;">#</th><th style="text-align: left;">Descripción del Artículo</th><th style="width: 45px;">Cant.</th><th style="width: 80px; text-align: right;">Precio Unit.</th><th style="width: 90px; text-align: right;">Subtotal</th></tr></thead>' +
-          '<tbody>' + rowsHtml + '</tbody>' +
-        '</table>' +
+  try {
+    // 1. Descargar la plantilla HTML desacoplada
+    var tRes = await fetch("https://arielfmdp.github.io/treinta-dashboard/comprobante.html?v=" + Date.now());
+    if (!tRes.ok) throw new Error("No se pudo cargar comprobante.html");
+    var html = await tRes.text();
 
-        '<div class="totals-wrap">' +
-          '<table class="totals-table">' +
-            '<tr><td>Subtotal:</td><td style="text-align: right; font-weight: bold;">' + currencyFormatter.format(subtotalVal) + '</td></tr>' +
-            (discountVal > 0 ? '<tr><td style="color: #e11d48;">Descuento:</td><td style="text-align: right; font-weight: bold; color: #e11d48;">-' + currencyFormatter.format(discountVal) + '</td></tr>' : '') +
-            '<tr style="border-top: 2px solid #0f172a; font-size: 14px;"><td style="font-weight: 900; padding-top: 6px;">TOTAL:</td><td style="text-align: right; font-weight: 900; padding-top: 6px; color: #0f172a;">' + currencyFormatter.format(totalVal) + '</td></tr>' +
-          '</table>' +
-        '</div>' +
+    // 2. Rellenar los marcadores
+    html = html.replace("{{LAYOUT_CLASS}}", layoutType === "a4-full" ? "layout-full" : "layout-half")
+               .replace(/{{LOGO_URL}}/g, logoUrl)
+               .replace(/{{TX_NUMBER}}/g, txNumber)
+               .replace(/{{CLIENTE}}/g, clientName)
+               .replace(/{{FECHA_HORA}}/g, dateStr)
+               .replace(/{{VENDEDOR}}/g, empName)
+               .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : "Cuenta Corriente / Otro")
+               .replace("{{FILAS_PRODUCTOS_FULL}}", rowsFull)
+               .replace("{{FILAS_PRODUCTOS_HALF}}", rowsHalf)
+               .replace(/{{SUBTOTAL}}/g, subtotalVal)
+               .replace("{{DESCUENTO_BLOQUE}}", descBlockFull)
+               .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
+               .replace(/{{TOTAL}}/g, totalVal)
+               .replace("{{TOTAL_ITEMS}}", products.length);
 
-        '<div class="sign-box">' +
-          '<div>Comprobante no válido como factura.</div>' +
-          '<div class="sign-line">Firma y Aclaración de Recepción</div>' +
-        '</div>' +
-      '</body></html>';
+    // 3. Crear iframe de impresión
+    var pFrame = document.createElement("iframe");
+    pFrame.style.position = "fixed";
+    pFrame.style.top = "-9999px";
+    pFrame.style.left = "-9999px";
+    document.body.appendChild(pFrame);
 
-  } else if (layoutType === "a4-half") {
-    // --- FORMATO 2: MEDIA HOJA A4 VERTICAL (105mm con línea de corte al medio) ---
-    var compactRows = "";
-    products.forEach(function(p) {
-      var cant = p.amount || 1;
-      var price = p.price || 0;
-      var lineTot = cant * price;
-      compactRows += '<div style="padding: 4px 0; border-bottom: 1px dashed #e2e8f0; font-size: 10px;">' +
-                       '<div style="display: flex; justify-content: space-between; font-weight: bold; color: #1e293b;">' +
-                         '<span style="max-width: 65mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + (p.name || "Artículo") + '</span>' +
-                         '<span>' + currencyFormatter.format(lineTot) + '</span>' +
-                       '</div>' +
-                       '<div style="color: #64748b; font-size: 9px;">' + cant + ' Unid. × ' + currencyFormatter.format(price) + '</div>' +
-                     '</div>';
-    });
+    var pDoc = pFrame.contentWindow.document;
+    pDoc.open();
+    pDoc.write(html);
+    pDoc.close();
 
-    receiptHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Comprobante #' + txNumber + '</title>' +
-      '<style>' +
-        '@page { size: A4 portrait; margin: 8mm 10mm; }' +
-        'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 10px; }' +
-        '.ticket-strip { width: 92mm; min-height: 270mm; border-right: 1px dashed #94a3b8; padding-right: 8mm; box-sizing: border-box; }' +
-        '.header-strip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }' +
-        '.logo-img-small { height: 26px; max-width: 40px; object-fit: contain; }' +
-        '.divider { border-top: 1px solid #0f172a; margin: 6px 0; }' +
-      '</style></head><body>' +
-        '<div class="ticket-strip">' +
-          '<div style="text-align: center;">' +
-            '<div class="header-strip">' +
-              '<img src="' + logoUrl + '" class="logo-img-small" alt="Logo" onerror="this.style.display=\x27none\x27;">' +
-              '<div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>' +
-            '</div>' +
-            '<div style="font-size: 9px; color: #64748b;">Distribuidora Mayorista</div>' +
-            '<div style="font-size: 11px; font-weight: bold; margin-top: 4px; color: #4f46e5;">Comprobante #' + txNumber + '</div>' +
-          '</div>' +
+    // 4. Esperar que el logo termine de cargar antes de imprimir
+    var targetImgId = layoutType === "a4-full" ? "receiptLogoImgFull" : "receiptLogoImgHalf";
+    var imgEl = pDoc.getElementById(targetImgId);
 
-          '<div class="divider"></div>' +
+    function startPrint() {
+      pFrame.contentWindow.focus();
+      pFrame.contentWindow.print();
+      setTimeout(function() { pFrame.remove(); }, 1500);
+    }
 
-          '<div style="font-size: 9.5px; line-height: 1.4; margin-bottom: 6px;">' +
-            '<div><span style="color: #64748b;">Cliente:</span> <strong>' + clientName + '</strong></div>' +
-            '<div><span style="color: #64748b;">Fecha:</span> ' + dateStr + '</div>' +
-            '<div><span style="color: #64748b;">Vendedor:</span> ' + empName + '</div>' +
-            '<div><span style="color: #64748b;">Pago:</span> ' + (tx.paymentTypeId === 1 ? "Efectivo" : "Otro") + '</div>' +
-          '</div>' +
+    if (imgEl && !imgEl.complete) {
+      imgEl.onload = startPrint;
+      imgEl.onerror = startPrint; // Si falla no bloquea la impresión
+    } else {
+      setTimeout(startPrint, 150);
+    }
 
-          '<div style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 4px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">Detalle de Artículos (' + products.length + ')</div>' +
-          '<div>' + compactRows + '</div>' +
-
-          '<div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #0f172a; font-size: 10px;">' +
-            '<div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Subtotal:</span><span>' + currencyFormatter.format(subtotalVal) + '</span></div>' +
-            (discountVal > 0 ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountVal) + '</span></div>' : '') +
-            '<div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900; margin-top: 4px; border-top: 1px dashed #0f172a; padding-top: 3px;"><span>TOTAL:</span><span>' + currencyFormatter.format(totalVal) + '</span></div>' +
-          '</div>' +
-
-          '<div style="margin-top: 25px; text-align: center; border-top: 1px dashed #94a3b8; padding-top: 5px; font-size: 8.5px; color: #64748b;">' +
-            'Firma Conforme Recepción' +
-          '</div>' +
-        '</div>' +
-      '</body></html>';
+  } catch (err) {
+    alert("Error al generar comprobante: " + err.message);
   }
-
-  // Creación de iframe invisible para imprimir
-  var pFrame = document.createElement("iframe");
-  pFrame.style.position = "fixed";
-  pFrame.style.top = "-9999px";
-  pFrame.style.left = "-9999px";
-  document.body.appendChild(pFrame);
-
-  var pDoc = pFrame.contentWindow.document;
-  pDoc.open();
-  pDoc.write(receiptHtml);
-  pDoc.close();
-
-  setTimeout(function() {
-    pFrame.contentWindow.focus();
-    pFrame.contentWindow.print();
-    setTimeout(function() { pFrame.remove(); }, 1500);
-  }, 250);
 }
 
 document.getElementById("btnPrintA4Full").onclick = function() { printReceipt("a4-full"); };
 document.getElementById("btnPrintA4Half").onclick = function() { printReceipt("a4-half"); };
-
 // Activar delegación del hover de zoom en ambas tablas
 attachHoverPreviewEvents("productsGlobalTableBody");
 attachHoverPreviewEvents("inventoryTableBody");
