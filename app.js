@@ -253,6 +253,7 @@ function switchTab(t) {
     viewClients.classList.remove("hidden");
     viewProducts.classList.add("hidden");
     viewInventory.classList.add("hidden");
+    viewTransactions.classList.add("hidden");
     if (allClients.length === 0) fetchClientsData();
   } else if (t === "sales") {
     tabBtnSales.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
@@ -260,6 +261,7 @@ function switchTab(t) {
     viewProducts.classList.remove("hidden");
     viewClients.classList.add("hidden");
     viewInventory.classList.add("hidden");
+    viewTransactions.classList.add("hidden");
     initSalesCategories();
     if (allGlobalProducts.length === 0) resetAndFetchProducts();
   } else if (t === "inventory") {
@@ -268,6 +270,7 @@ function switchTab(t) {
     viewInventory.classList.remove("hidden");
     viewClients.classList.add("hidden");
     viewProducts.classList.add("hidden");
+    viewTransactions.classList.add("hidden");
     initInventoryView();
   } else if (t === "transactions") {
     tabBtnTransactions.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-indigo-600";
@@ -1532,6 +1535,7 @@ function renderTransactionsTable() {
     // Fila clickeable con efecto hover y el ID de la transacción asociado:
     tr.className = "hover:bg-indigo-50/40 cursor-pointer transition-colors";
     tr.dataset.txId = tx.transactionId || tx.id;
+    tr.dataset.rowValue = tx.value || 0; // 👈 Guarda el valor de este abono puntual
 
 
     // Formato ultra-compacto 24hs sin preposiciones "de": DD/MM/AAAA HH:mm
@@ -1585,11 +1589,12 @@ var modalTxProductsList = document.getElementById("modalTxProductsList");
 document.getElementById("transactionsTableBody").addEventListener("click", function(e) {
   var row = e.target.closest("tr");
   if (row && row.dataset.txId) {
-    openTransactionDetail(row.dataset.txId);
+    openTransactionDetail(row.dataset.txId, Number(row.dataset.rowValue) || 0);
   }
 });
 
-async function openTransactionDetail(txId) {
+
+async function openTransactionDetail(txId, rowValue) {
   document.body.classList.add("overflow-hidden");
   modalTxDetail.classList.remove("hidden");
 
@@ -1598,13 +1603,23 @@ async function openTransactionDetail(txId) {
   modalTxProductsList.innerHTML = '<p class="text-center py-8 text-indigo-600 text-xs font-semibold"><span class="inline-block animate-spin mr-1.5">🔄</span> Cargando detalle del pedido...</p>';
 
   try {
-    var url = "https://core-api-gateway.treinta.co/transactions/" + txId;
-    var res = await fetch(url, { headers: getHeaders() });
-    if (!res.ok) throw new Error("Error " + res.status);
+    // Consultamos la venta y el historial de pagos en paralelo
+    var urlTx = "https://core-api-gateway.treinta.co/transactions/" + txId;
+    var urlPay = "https://api.prod.treinta.co/payment/by-transaction/" + txId;
 
-    var data = await res.json();
-    
-    currentTxDetailData = data; // 👈 Guardar para el motor de impresión
+    var [resTx, resPay] = await Promise.all([
+      fetch(urlTx, { headers: getHeaders() }),
+      fetch(urlPay, { headers: getHeaders() }).catch(function() { return null; })
+    ]);
+
+    if (!resTx.ok) throw new Error("Error " + resTx.status);
+
+    var data = await resTx.json();
+    var payments = (resPay && resPay.ok) ? await resPay.json() : [];
+
+    currentTxDetailData = data;
+    currentTxDetailData._payments = payments;
+    currentTxDetailData._rowValue = rowValue;
 
     var tx = data.transaction || {};
     var totals = data.totals || {};
@@ -1612,17 +1627,48 @@ async function openTransactionDetail(txId) {
     var contact = tx.contact || {};
     var user = tx.user || {};
 
-    // 1. Títulos: limitado a 1 línea con tooltip
+    // 1. Títulos
     var descText = tx.description || "Comprobante de venta";
     var titleEl = document.getElementById("modalTxTitle");
     titleEl.textContent = descText;
-    titleEl.title = descText; // Al pasar el mouse muestra la descripción completa
+    titleEl.title = descText;
     document.getElementById("modalTxSubtitle").textContent = "Transacción #" + (tx.transactionCount || tx.id.slice(0, 8));
 
-    // 2. Tarjeta Financiera
-    var mainVal = tx.value || totals.total || 0;
-    document.getElementById("modalTxMainAmount").textContent = currencyFormatter.format(mainVal);
-    document.getElementById("modalTxTotalSale").textContent = currencyFormatter.format(totals.total || mainVal);
+    // 2. Cálculo Contable Exacto
+    var saleTotal = totals.total || tx.value || 0;
+    var totalPaid = 0;
+
+    if (payments && payments.length > 0) {
+      totalPaid = payments.reduce(function(acc, p) { return acc + (p.value || 0); }, 0);
+    } else {
+      totalPaid = rowValue || saleTotal;
+    }
+
+    var balanceRemaining = Math.max(0, saleTotal - totalPaid);
+    var isPaid = balanceRemaining <= 1; // Tolerancia de redondeo
+
+    currentTxDetailData._isPaid = isPaid;
+    currentTxDetailData._totalPaid = totalPaid;
+    currentTxDetailData._balanceRemaining = balanceRemaining;
+
+    // Actualizar Estado Visual
+    var statusBadge = document.getElementById("modalTxStatusBadge");
+    if (isPaid) {
+      statusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800";
+      statusBadge.textContent = "Pagada";
+    } else if (totalPaid > 0) {
+      statusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800";
+      statusBadge.textContent = "Pago Parcial (" + ((totalPaid / saleTotal) * 100).toFixed(0) + "%)";
+    } else {
+      statusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800";
+      statusBadge.textContent = "Pendiente";
+    }
+
+    // Montos Financieros
+    document.getElementById("modalTxMainAmount").textContent = currencyFormatter.format(rowValue || totalPaid);
+    document.getElementById("modalTxTotalSale").textContent = currencyFormatter.format(saleTotal);
+    document.getElementById("modalTxTotalPaid").textContent = currencyFormatter.format(totalPaid);
+    document.getElementById("modalTxBalanceDue").textContent = currencyFormatter.format(balanceRemaining);
     document.getElementById("modalTxProfit").textContent = currencyFormatter.format(totals.profit || 0);
 
     // Descuento
@@ -1635,15 +1681,14 @@ async function openTransactionDetail(txId) {
       discRow.classList.add("hidden");
     }
 
-    // Metadatos: cruce de Vendedor por userId
+    // Metadatos
     document.getElementById("modalTxClient").textContent = contact.name || "Consumidor Final";
-    
     var empName = employeesMap[tx.userId] || employeesMap[user.id] || "";
     if (!empName && (user.firstName || user.lastName)) {
       empName = (user.firstName + " " + (user.lastName || "")).trim();
     }
     document.getElementById("modalTxUser").textContent = empName || "Vendedor";
-    document.getElementById("modalTxPayment").textContent = tx.paymentTypeId === 1 ? "Efectivo" : "Otro";
+    document.getElementById("modalTxPayment").textContent = tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro");
 
     // Fecha
     var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : 0);
@@ -1727,7 +1772,6 @@ async function printReceipt(layoutType) {
   var clientName = contact.name || "Consumidor Final";
   var txNumber = tx.transactionCount || tx.id.slice(0, 8);
   var empName = employeesMap[tx.userId] || employeesMap[user.id] || "Vendedor Millenial";
-  // Nombre exacto con mayúsculas corregido:
   var logoUrl = "https://arielfmdp.github.io/treinta-dashboard/LOGO.png";
 
   var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : Date.now());
@@ -1738,6 +1782,22 @@ async function printReceipt(layoutType) {
   var subtotalVal = currencyFormatter.format(totals.subtotal || totals.total || tx.value || 0);
   var discountNum = totals.totalDiscount || 0;
   var totalVal = currencyFormatter.format(totals.total || tx.value || 0);
+
+  // --- VARIABLES CONTABLES CALCULADAS (ESTADO Y SALDOS) ---
+  var totalPaidNum = data._totalPaid !== undefined ? data._totalPaid : (totals.total || tx.value || 0);
+  var totalPaidVal = currencyFormatter.format(totalPaidNum);
+
+  var isPaid = data._isPaid !== undefined ? data._isPaid : true;
+  var statusLabel = isPaid ? "Pagada" : "Pendiente";
+  var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
+
+  var saldoFilaFull = balanceDue > 1
+    ? '<tr style="color: #e11d48; font-weight: bold;"><td>Saldo Pendiente:</td><td style="text-align: right;">' + currencyFormatter.format(balanceDue) + '</td></tr>'
+    : '<tr style="color: #059669;"><td>Saldo Pendiente:</td><td style="text-align: right;">$ 0</td></tr>';
+
+  var saldoFilaHalf = balanceDue > 1
+    ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
+    : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>';
 
   // Armar las filas de productos
   var rowsFull = "";
@@ -1787,13 +1847,17 @@ async function printReceipt(layoutType) {
                .replace(/{{CLIENTE}}/g, clientName)
                .replace(/{{FECHA_HORA}}/g, dateStr)
                .replace(/{{VENDEDOR}}/g, empName)
-               .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : "Cuenta Corriente / Otro")
+               .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"))
+               .replace(/{{ESTADO_LABEL}}/g, statusLabel)
                .replace("{{FILAS_PRODUCTOS_FULL}}", rowsFull)
                .replace("{{FILAS_PRODUCTOS_HALF}}", rowsHalf)
                .replace(/{{SUBTOTAL}}/g, subtotalVal)
                .replace("{{DESCUENTO_BLOQUE}}", descBlockFull)
                .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
                .replace(/{{TOTAL}}/g, totalVal)
+               .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
+               .replace("{{SALDO_PENDIENTE_FILA}}", saldoFilaFull)
+               .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
                .replace("{{TOTAL_ITEMS}}", products.length);
 
     // 3. Crear iframe de impresión
@@ -1820,7 +1884,7 @@ async function printReceipt(layoutType) {
 
     if (imgEl && !imgEl.complete) {
       imgEl.onload = startPrint;
-      imgEl.onerror = startPrint; // Si falla no bloquea la impresión
+      imgEl.onerror = startPrint;
     } else {
       setTimeout(startPrint, 150);
     }
@@ -1829,6 +1893,7 @@ async function printReceipt(layoutType) {
     alert("Error al generar comprobante: " + err.message);
   }
 }
+
 
 document.getElementById("btnPrintA4Full").onclick = function() { printReceipt("a4-full"); };
 document.getElementById("btnPrintA4Half").onclick = function() { printReceipt("a4-half"); };

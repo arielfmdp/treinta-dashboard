@@ -455,30 +455,32 @@
         </div>
         <button id="btnCloseTxDetail" class="text-slate-400 hover:text-slate-600 text-2xl leading-none flex-shrink-0">&times;</button>
       </div>
-
-      <!-- Tarjeta Financiera (Idéntica a la captura) -->
+      
+      <!-- Tarjeta Financiera con Contabilidad Real -->
       <div id="modalTxFinancialCard" class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2 flex-shrink-0">
         <div class="flex justify-between items-center">
           <div>
-            <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Abono / Venta</span>
+            <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Monto de este comprobante</span>
             <h4 id="modalTxMainAmount" class="text-xl font-extrabold text-slate-900">$ 0</h4>
           </div>
-          <span id="modalTxStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Pagada</span>
+          <span id="modalTxStatusBadge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">Pagada</span>
         </div>
 
         <div id="modalTxDiscountRow" class="hidden flex justify-between text-[11px] text-slate-500 border-t border-slate-200/60 pt-1.5">
-          <span>Descuento aplicado:</span>
+          <span>Descuento aplicado al pedido:</span>
           <span id="modalTxDiscountVal" class="font-bold text-rose-600">$ 0</span>
         </div>
 
-        <!-- Grid de Metadatos -->
+        <!-- Grid de Metadatos y Totales de Cuenta -->
         <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-2 border-t border-slate-200/60 text-[11px]">
           <div><span class="text-slate-400">Cliente:</span> <span id="modalTxClient" class="font-bold text-slate-800">-</span></div>
           <div><span class="text-slate-400">Vendedor:</span> <span id="modalTxUser" class="font-semibold text-slate-700">-</span></div>
           <div><span class="text-slate-400">Fecha y hora:</span> <span id="modalTxDateTime" class="font-mono text-slate-700">-</span></div>
           <div><span class="text-slate-400">Método de pago:</span> <span id="modalTxPayment" class="font-semibold text-slate-700">Efectivo</span></div>
-          <div><span class="text-slate-400">Ganancia neta:</span> <span id="modalTxProfit" class="font-bold text-emerald-600">$ 0</span></div>
-          <div><span class="text-slate-400">Total venta:</span> <span id="modalTxTotalSale" class="font-bold text-slate-900">$ 0</span></div>
+          <div><span class="text-slate-400">Total Venta:</span> <span id="modalTxTotalSale" class="font-bold text-slate-900">$ 0</span></div>
+          <div><span class="text-slate-400">Ganancia estimada:</span> <span id="modalTxProfit" class="font-bold text-emerald-600">$ 0</span></div>
+          <div><span class="text-slate-400">Total Abonado:</span> <span id="modalTxTotalPaid" class="font-bold text-emerald-700">$ 0</span></div>
+          <div><span class="text-slate-400">Saldo Pendiente:</span> <span id="modalTxBalanceDue" class="font-bold text-rose-600">$ 0</span></div>
         </div>
       </div>
 
