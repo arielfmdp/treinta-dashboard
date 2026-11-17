@@ -1791,14 +1791,16 @@ async function printReceipt(layoutType) {
   var statusLabel = isPaid ? "Pagada" : "Pendiente";
   var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
 
-  var saldoFilaFull = balanceDue > 1
-    ? '<tr style="color: #e11d48; font-weight: bold;"><td>Saldo Pendiente:</td><td style="text-align: right;">' + currencyFormatter.format(balanceDue) + '</td></tr>'
-    : '<tr style="color: #059669;"><td>Saldo Pendiente:</td><td style="text-align: right;">$ 0</td></tr>';
+  // Variables para la tabla horizontal A4
+  var discountValStr = discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0";
+  var balanceDueStr = currencyFormatter.format(balanceDue);
+  var balanceDueStyle = balanceDue > 1 ? "color: #e11d48; font-weight: 900;" : "color: #059669;";
 
+  // Bloque para Media A4 (mantiene su formato vertical)
   var saldoFilaHalf = balanceDue > 1
     ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
     : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>';
-
+    
   // Armar las filas de productos
   var rowsFull = "";
   var rowsHalf = "";
@@ -1852,11 +1854,12 @@ async function printReceipt(layoutType) {
                .replace("{{FILAS_PRODUCTOS_FULL}}", rowsFull)
                .replace("{{FILAS_PRODUCTOS_HALF}}", rowsHalf)
                .replace(/{{SUBTOTAL}}/g, subtotalVal)
-               .replace("{{DESCUENTO_BLOQUE}}", descBlockFull)
+               .replace("{{DESCUENTO_VAL}}", discountValStr) // 👈 Valor horizontal A4
                .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
                .replace(/{{TOTAL}}/g, totalVal)
                .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
-               .replace("{{SALDO_PENDIENTE_FILA}}", saldoFilaFull)
+               .replace("{{SALDO_PENDIENTE_VAL}}", balanceDueStr) // 👈 Valor horizontal A4
+               .replace("{{ESTILO_PENDIENTE}}", balanceDueStyle)
                .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
                .replace("{{TOTAL_ITEMS}}", products.length);
 

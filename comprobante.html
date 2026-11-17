@@ -13,21 +13,38 @@
     }
 
     /* ================= FORMATO 1: A4 COMPLETO ================= */
-    body.layout-full {
-      font-size: 12px;
-    }
     @page {
       size: A4 portrait;
       margin: 12mm 15mm;
     }
+
+    body.layout-full {
+      font-size: 11px;
+    }
     body.layout-full .half-only { display: none !important; }
+
+    /* Contenedor que empuja los totales al pie de la hoja */
+    body.layout-full .full-page-container {
+      min-height: 265mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    body.layout-full .full-main-content {
+      flex: 1 0 auto;
+    }
+    body.layout-full .full-footer-pinned {
+      margin-top: auto;
+      padding-top: 14px;
+    }
+
     body.layout-full .header-box {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #0f172a;
-      padding-bottom: 10px;
-      margin-bottom: 14px;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
     }
     body.layout-full .logo-container {
       display: flex;
@@ -35,7 +52,7 @@
       gap: 12px;
     }
     body.layout-full .logo-img {
-      height: 42px;
+      height: 40px;
       max-width: 65px;
       object-fit: contain;
     }
@@ -45,58 +62,83 @@
       letter-spacing: -0.5px;
       line-height: 1;
     }
-    body.layout-full .meta-grid {
+
+    /* Grilla de 2 columnas para el encabezado */
+    .meta-2col-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px 20px;
+      gap: 4px 16px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
+      padding: 8px 14px;
+      margin-bottom: 12px;
       font-size: 11px;
     }
-    body.layout-full table {
+    .meta-lbl {
+      color: #64748b;
+    }
+
+    body.layout-full table.products-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
-    body.layout-full th {
+    body.layout-full table.products-table th {
       background: #0f172a;
       color: #ffffff;
-      padding: 6px 8px;
+      padding: 5px 8px;
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    body.layout-full td {
-      padding: 6px 8px;
+    body.layout-full table.products-table td {
+      padding: 5px 8px;
       border-bottom: 1px solid #e2e8f0;
       font-size: 11px;
     }
-    body.layout-full .totals-wrap {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 24px;
-    }
-    body.layout-full .totals-table {
-      width: 260px;
-      font-size: 11px;
+
+    /* TABLA HORIZONTAL DE TOTALES (1 SOLA FILA) */
+    .totals-horizontal-table {
+      width: 100%;
       border-collapse: collapse;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      text-align: center;
     }
-    body.layout-full .totals-table td {
-      padding: 4px 6px;
-      border: none;
+    .totals-horizontal-table th {
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 6px 4px;
+      border-bottom: 1px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
     }
+    .totals-horizontal-table td {
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: bold;
+      border-right: 1px solid #e2e8f0;
+    }
+    .totals-horizontal-table th:last-child,
+    .totals-horizontal-table td:last-child {
+      border-right: none;
+    }
+
     body.layout-full .sign-box {
-      margin-top: 35px;
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      align-items: flex-end;
+      font-size: 10.5px;
       color: #64748b;
+      padding-top: 10px;
     }
     body.layout-full .sign-line {
-      width: 200px;
+      width: 220px;
       border-top: 1px dashed #94a3b8;
       text-align: center;
       padding-top: 5px;
@@ -104,7 +146,7 @@
 
     /* ================= FORMATO 2: MEDIA A4 VERTICAL (105mm) ================= */
     body.layout-half {
-      font-size: 10px;
+      font-size: 9.5px;
     }
     body.layout-half .full-only { display: none !important; }
     body.layout-half .ticket-strip {
@@ -125,65 +167,94 @@
       max-width: 45px;
       object-fit: contain;
     }
+    body.layout-half .meta-half-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 6px;
+      margin-bottom: 6px;
+      font-size: 9px;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body class="{{LAYOUT_CLASS}}">
 
   <!-- ================= VISTA A4 COMPLETA ================= -->
   <div class="full-only">
-    <div class="header-box">
-      <div class="logo-container">
-        <img id="receiptLogoImgFull" src="{{LOGO_URL}}" class="logo-img" alt="Logo">
-        <div>
-          <div class="logo-text">TRAPOS MDP</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 3px;">Distribuidora Mayorista</div>
+    <div class="full-page-container">
+      
+      <!-- Contenido Principal -->
+      <div class="full-main-content">
+        <div class="header-box">
+          <div class="logo-container">
+            <img id="receiptLogoImgFull" src="{{LOGO_URL}}" class="logo-img" alt="Logo">
+            <div>
+              <div class="logo-text">TRAPOS MDP</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Distribuidora Mayorista</div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase;">Comprobante de Venta</div>
+          </div>
+        </div>
+
+        <!-- Encabezado Reorganizado en 2 Columnas -->
+        <div class="meta-2col-grid">
+          <div><span class="meta-lbl">Fecha:</span> <strong>{{FECHA_HORA}}</strong></div>
+          <div style="text-align: right;"><span class="meta-lbl">Comprobante:</span> <strong style="color: #4f46e5; font-size: 12px;">#{{TX_NUMBER}}</strong></div>
+
+          <div><span class="meta-lbl">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
+          <div style="text-align: right;"><span class="meta-lbl">Vendedor:</span> <strong>{{VENDEDOR}}</strong></div>
+
+          <div><span class="meta-lbl">Pago:</span> <strong>{{MEDIO_PAGO}}</strong></div>
+          <div style="text-align: right;"><span class="meta-lbl">Estado:</span> <strong>{{ESTADO_LABEL}}</strong></div>
+        </div>
+
+        <table class="products-table">
+          <thead>
+            <tr>
+              <th style="width: 25px;">#</th>
+              <th style="text-align: left;">Descripción del Artículo</th>
+              <th style="width: 45px; text-align: center;">Cant.</th>
+              <th style="width: 85px; text-align: right;">Precio Unit.</th>
+              <th style="width: 95px; text-align: right;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{FILAS_PRODUCTOS_FULL}}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pie Anclado Abajo de Todo (Totales Horizontales + Firma) -->
+      <div class="full-footer-pinned">
+        <table class="totals-horizontal-table">
+          <thead>
+            <tr>
+              <th>Subtotal</th>
+              <th>Descuento</th>
+              <th>Total Venta</th>
+              <th>Total Abonado</th>
+              <th>Pendiente</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{SUBTOTAL}}</td>
+              <td style="color: #e11d48;">{{DESCUENTO_VAL}}</td>
+              <td style="font-size: 13px; font-weight: 900; color: #0f172a;">{{TOTAL}}</td>
+              <td style="color: #059669;">{{TOTAL_ABONADO}}</td>
+              <td style="{{ESTILO_PENDIENTE}}">{{SALDO_PENDIENTE_VAL}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="sign-box">
+          <div>Comprobante no válido como factura.</div>
+          <div class="sign-line">Firma y Aclaración de Recepción</div>
         </div>
       </div>
-      <div style="text-align: right;">
-        <div style="font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase;">Comprobante de Venta</div>
-        <div style="font-size: 15px; font-weight: 800; color: #4f46e5; margin-top: 2px;">#{{TX_NUMBER}}</div>
-      </div>
-    </div>
 
-    <div class="meta-grid">
-      <div><strong style="color: #64748b;">Cliente:</strong> {{CLIENTE}}</div>
-      <div><strong style="color: #64748b;">Fecha y Hora:</strong> {{FECHA_HORA}}</div>
-      <div><strong style="color: #64748b;">Vendedor:</strong> {{VENDEDOR}}</div>
-      <div><strong style="color: #64748b;">Método de Pago:</strong> {{MEDIO_PAGO}}</div>
-      <div><strong style="color: #64748b;">Estado:</strong> <span style="font-weight: bold;">{{ESTADO_LABEL}}</span></div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 25px;">#</th>
-          <th style="text-align: left;">Descripción del Artículo</th>
-          <th style="width: 45px; text-align: center;">Cant.</th>
-          <th style="width: 85px; text-align: right;">Precio Unit.</th>
-          <th style="width: 95px; text-align: right;">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{FILAS_PRODUCTOS_FULL}}
-      </tbody>
-    </table>
-
-    <div class="totals-wrap">
-      <table class="totals-table">
-        <tr><td>Subtotal:</td><td style="text-align: right; font-weight: bold;">{{SUBTOTAL}}</td></tr>
-        {{DESCUENTO_BLOQUE}}
-        <tr style="border-top: 2px solid #0f172a; font-size: 14px;">
-          <td style="font-weight: 900; padding-top: 6px;">TOTAL VENTA:</td>
-          <td style="text-align: right; font-weight: 900; padding-top: 6px; color: #0f172a;">{{TOTAL}}</td>
-        </tr>
-        <tr><td>Total Abonado:</td><td style="text-align: right; font-weight: bold; color: #059669;">{{TOTAL_ABONADO}}</td></tr>
-        {{SALDO_PENDIENTE_FILA}}
-      </table>
-    </div>
-
-    <div class="sign-box">
-      <div>Comprobante no válido como factura.</div>
-      <div class="sign-line">Firma y Aclaración de Recepción</div>
     </div>
   </div>
 
@@ -196,26 +267,30 @@
           <div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>
         </div>
         <div style="font-size: 9px; color: #64748b;">Distribuidora Mayorista</div>
-        <div style="font-size: 11px; font-weight: bold; margin-top: 4px; color: #4f46e5;">Comprobante #{{TX_NUMBER}}</div>
       </div>
 
-      <div style="border-top: 1px solid #0f172a; margin: 6px 0;"></div>
+      <div style="border-top: 1px solid #0f172a; margin: 5px 0;"></div>
 
-      <div style="font-size: 9.5px; line-height: 1.4; margin-bottom: 6px;">
-        <div><span style="color: #64748b;">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
-        <div><span style="color: #64748b;">Fecha:</span> {{FECHA_HORA}}</div>
-        <div><span style="color: #64748b;">Vendedor:</span> {{VENDEDOR}}</div>
-        <div><span style="color: #64748b;">Pago:</span> {{MEDIO_PAGO}}</div>
-        <div><span style="color: #64748b;">Estado:</span> <strong>{{ESTADO_LABEL}}</strong></div>
+      <!-- Encabezado Reorganizado en 2 Columnas -->
+      <div class="meta-half-grid">
+        <div><span class="meta-lbl">Fecha:</span> <strong>{{FECHA_HORA}}</strong></div>
+        <div style="text-align: right;"><span class="meta-lbl">Comp:</span> <strong style="color: #4f46e5;">#{{TX_NUMBER}}</strong></div>
+
+        <div><span class="meta-lbl">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
+        <div style="text-align: right;"><span class="meta-lbl">Vend:</span> <strong>{{VENDEDOR}}</strong></div>
+
+        <div><span class="meta-lbl">Pago:</span> <strong>{{MEDIO_PAGO}}</strong></div>
+        <div style="text-align: right;"><span class="meta-lbl">Estado:</span> <strong>{{ESTADO_LABEL}}</strong></div>
       </div>
 
-      <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 4px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+      <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 3px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
         Detalle de Artículos ({{TOTAL_ITEMS}})
       </div>
       <div>
         {{FILAS_PRODUCTOS_HALF}}
       </div>
 
+      <!-- Parte inferior de Media A4 (Conservada intacta) -->
       <div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #0f172a; font-size: 10px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
           <span>Subtotal:</span><span>{{SUBTOTAL}}</span>
