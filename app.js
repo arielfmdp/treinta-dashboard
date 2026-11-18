@@ -1967,14 +1967,6 @@ function paginateAndRenderReceipt(doc, isFull, products) {
 async function printReceipt(layoutType) {
   if (!currentTxDetailData) return;
 
-  // Abrir ventana top-level ANTES del await para preservar el gesto de usuario y que Chrome respete @page 105x297mm
-  var printWin = window.open("", "_blank");
-  if (printWin) {
-    printWin.document.open();
-    printWin.document.write("<!DOCTYPE html><html><body style='font-family:sans-serif;padding:20px;color:#475569;'>Generando comprobante...</body></html>");
-    printWin.document.close();
-  }
-
   var isFull = layoutType === "a4-full";
   var data = currentTxDetailData;
   var tx = data.transaction || {};
@@ -2049,30 +2041,22 @@ async function printReceipt(layoutType) {
       .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
       .replace(/{{TOTAL_ITEMS}}/g, products.length);
 
-    var targetWin = null;
-    var pFrame = null;
+    // Iframe oculto por coordenadas (sin visibility: hidden para que Chrome sí pinte)
+    var pFrame = document.createElement("iframe");
+    pFrame.style.position = "fixed";
+    pFrame.style.top = "-9999px";
+    pFrame.style.left = "-9999px";
+    pFrame.style.width = isFull ? "210mm" : "105mm";
+    pFrame.style.height = "297mm";
+    pFrame.style.border = "none";
+    document.body.appendChild(pFrame);
 
-    if (printWin && !printWin.closed) {
-      targetWin = printWin;
-    } else {
-      // Fallback a iframe si los popups están bloqueados
-      pFrame = document.createElement("iframe");
-      pFrame.style.position = "fixed";
-      pFrame.style.top = "-9999px";
-      pFrame.style.left = "-9999px";
-      pFrame.style.width = isFull ? "210mm" : "105mm";
-      pFrame.style.height = "297mm";
-      pFrame.style.border = "none";
-      document.body.appendChild(pFrame);
-      targetWin = pFrame.contentWindow;
-    }
-
-    var pDoc = targetWin.document;
+    var pDoc = pFrame.contentWindow.document;
     pDoc.open();
     pDoc.write(html);
     pDoc.close();
 
-    // Esperar a que apliquen estilos antes de medir y paginar
+    // Esperar un tick para asegurar que Chromium aplicó el CSS antes de medir el DOM
     await new Promise(function(resolve) { setTimeout(resolve, 60); });
     paginateAndRenderReceipt(pDoc, isFull, products);
 
@@ -2085,24 +2069,16 @@ async function printReceipt(layoutType) {
       });
     }));
 
-    if (printWin && !printWin.closed) {
-      printWin.onafterprint = function() { printWin.close(); };
-    }
-
     setTimeout(function() {
-      targetWin.focus();
-      targetWin.print();
-      if (pFrame) {
-        setTimeout(function() { pFrame.remove(); }, 1500);
-      }
+      pFrame.contentWindow.focus();
+      pFrame.contentWindow.print();
+      setTimeout(function() { pFrame.remove(); }, 1500);
     }, 100);
 
   } catch (err) {
-    if (printWin && !printWin.closed) printWin.close();
     alert("Error al generar comprobante: " + err.message);
   }
 }
-
 document.getElementById("btnPrintA4Full").onclick = function() { printReceipt("a4-full"); };
 document.getElementById("btnPrintA4Half").onclick = function() { printReceipt("a4-half"); };
 
