@@ -1967,6 +1967,14 @@ function paginateAndRenderReceipt(doc, isFull, products) {
 async function printReceipt(layoutType) {
   if (!currentTxDetailData) return;
 
+  // Abrir ventana top-level ANTES del await para preservar el gesto de usuario y que Chrome respete @page 105x297mm
+  var printWin = window.open("", "_blank");
+  if (printWin) {
+    printWin.document.open();
+    printWin.document.write("<!DOCTYPE html><html><body style='font-family:sans-serif;padding:20px;color:#475569;'>Generando comprobante...</body></html>");
+    printWin.document.close();
+  }
+
   var isFull = layoutType === "a4-full";
   var data = currentTxDetailData;
   var tx = data.transaction || {};
@@ -2033,36 +2041,41 @@ async function printReceipt(layoutType) {
       .replace(/{{ESTADO_LABEL}}/g, statusLabel)
       .replace(/{{SUBTOTAL}}/g, subtotalVal)
       .replace(/{{DESCUENTO_VAL}}/g, discountValStr)
-      .replace(/{{DESCUENTO_BLOQUE_HALF}}/g, descBlockHalf)
+      .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
       .replace(/{{TOTAL}}/g, totalVal)
       .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
-      .replace(/{{SALDO_PENDIENTE_VAL}}/g, balanceDueStr)
-      .replace(/{{ESTILO_PENDIENTE}}/g, balanceDueStyle)
-      .replace(/{{SALDO_PENDIENTE_FILA_HALF}}/g, saldoFilaHalf)
+      .replace("{{SALDO_PENDIENTE_VAL}}", balanceDueStr)
+      .replace("{{ESTILO_PENDIENTE}}", balanceDueStyle)
+      .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
       .replace(/{{TOTAL_ITEMS}}/g, products.length);
 
-    // Ocultar fuera de pantalla SIN visibility: hidden para que Chromium sí lo pinte al imprimir
-    var pFrame = document.createElement("iframe");
-    pFrame.style.position = "fixed";
-    pFrame.style.top = "-9999px";
-    pFrame.style.left = "-9999px";
-    pFrame.style.width = isFull ? "210mm" : "105mm";
-    pFrame.style.height = "297mm";
-    pFrame.style.border = "none";
-    document.body.appendChild(pFrame);
+    var targetWin = null;
+    var pFrame = null;
 
-    var pDoc = pFrame.contentWindow.document;
+    if (printWin && !printWin.closed) {
+      targetWin = printWin;
+    } else {
+      // Fallback a iframe si los popups están bloqueados
+      pFrame = document.createElement("iframe");
+      pFrame.style.position = "fixed";
+      pFrame.style.top = "-9999px";
+      pFrame.style.left = "-9999px";
+      pFrame.style.width = isFull ? "210mm" : "105mm";
+      pFrame.style.height = "297mm";
+      pFrame.style.border = "none";
+      document.body.appendChild(pFrame);
+      targetWin = pFrame.contentWindow;
+    }
+
+    var pDoc = targetWin.document;
     pDoc.open();
     pDoc.write(html);
     pDoc.close();
 
-    // Esperar un tick para asegurar que Chromium aplicó el CSS antes de medir el DOM
-    await new Promise(function(resolve) { setTimeout(resolve, 50); });
-
-    // Medir alturas reales y distribuir en páginas antes de imprimir
+    // Esperar a que apliquen estilos antes de medir y paginar
+    await new Promise(function(resolve) { setTimeout(resolve, 60); });
     paginateAndRenderReceipt(pDoc, isFull, products);
 
-    // Esperar a que carguen las imágenes renderizadas (logo en pág 1)
     var imgs = Array.prototype.slice.call(pDoc.querySelectorAll("#sheetsRoot img"));
     await Promise.all(imgs.map(function(img) {
       if (img.complete) return Promise.resolve();
@@ -2072,13 +2085,20 @@ async function printReceipt(layoutType) {
       });
     }));
 
+    if (printWin && !printWin.closed) {
+      printWin.onafterprint = function() { printWin.close(); };
+    }
+
     setTimeout(function() {
-      pFrame.contentWindow.focus();
-      pFrame.contentWindow.print();
-      setTimeout(function() { pFrame.remove(); }, 1500);
+      targetWin.focus();
+      targetWin.print();
+      if (pFrame) {
+        setTimeout(function() { pFrame.remove(); }, 1500);
+      }
     }, 100);
 
   } catch (err) {
+    if (printWin && !printWin.closed) printWin.close();
     alert("Error al generar comprobante: " + err.message);
   }
 }

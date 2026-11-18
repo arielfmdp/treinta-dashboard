@@ -17,11 +17,14 @@
     /* Regla @page inyectada dinámicamente según formato */
     {{PAGE_RULE_CSS}}
 
-    /* ================= ESTRUCTURA DE HOJAS PAGINADAS ================= */
+/* ================= ESTRUCTURA DE HOJAS PAGINADAS ================= */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
     .sheet {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       page-break-after: always;
       break-after: page;
       overflow: hidden;
@@ -29,13 +32,6 @@
     .sheet:last-child {
       page-break-after: auto;
       break-after: auto;
-    }
-    .sheet-body {
-      flex: 1 0 auto;
-    }
-    .sheet-footer {
-      margin-top: auto;
-      padding-top: 8px;
     }
 
     .page-indicator {
@@ -59,7 +55,7 @@
       padding-top: 5px;
     }
 
-    /* ================= FORMATO 1: A4 COMPLETA (180mm x 270mm útiles) ================= */
+    /* ================= FORMATO 1: A4 COMPLETA (Totales anclados al pie) ================= */
     body.layout-full {
       font-size: 11px;
     }
@@ -68,7 +64,17 @@
       width: 180mm; /* 210mm - 15mm izq - 15mm der */
     }
     body.layout-full .sheet {
-      height: 270mm; /* 297mm - 12mm sup - 12mm inf - 3mm holgura */
+      height: 270mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    body.layout-full .sheet-body {
+      flex: 1 0 auto;
+    }
+    body.layout-full .sheet-footer {
+      margin-top: auto;
+      padding-top: 8px;
     }
     body.layout-full .measure-ruler {
       height: 270mm;
@@ -185,7 +191,7 @@
       padding-top: 5px;
     }
 
-    /* ================= FORMATO 2: MEDIA A4 (105mm x 297mm -> 93mm x 280mm útiles) ================= */
+    /* ================= FORMATO 2: MEDIA A4 (105mm x 297mm -> Totales pegados a productos) ================= */
     body.layout-half {
       font-size: 9.5px;
     }
@@ -194,11 +200,17 @@
       width: 93mm; /* 105mm - 6mm izq - 6mm der */
     }
     body.layout-half .sheet {
-      height: 280mm; /* 297mm - 7mm sup - 7mm inf - 3mm holgura */
+      display: block;
+      height: auto; /* No estira la hoja: totales quedan pegados debajo del último ítem */
+    }
+    body.layout-half .sheet-footer {
+      margin-top: 8px;
+      padding-top: 0;
     }
     body.layout-half .measure-ruler {
-      height: 280mm;
+      height: 280mm; /* Límite de altura real para saber cuándo saltar a pág 2 */
     }
+
 
     body.layout-half .header-strip {
       display: flex;
