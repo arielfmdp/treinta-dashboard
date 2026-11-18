@@ -1206,12 +1206,12 @@ function getTxTimestamps() {
     startObj = new Date(y, 0, 1);
     endObj = new Date(y, 11, 31);
   } else if (txPeriodMode === "custom") {
-    var sParts = document.getElementById("txCustomStartDate").value.split("-").map(Number);
-    var eParts = document.getElementById("txCustomEndDate").value.split("-").map(Number);
-    startMs = toTreintaStartMs(sParts[0], sParts[1], sParts[2]);
-    endMs = toTreintaEndMs(eParts[0], eParts[1], eParts[2]);
-    startObj = new Date(sParts[0], sParts[1] - 1, sParts[2]);
-    endObj = new Date(eParts[0], eParts[1] - 1, eParts[2]);
+    var sY = txCustomStart.getFullYear(), sM = txCustomStart.getMonth() + 1, sD = txCustomStart.getDate();
+    var eY = txCustomEnd.getFullYear(), eM = txCustomEnd.getMonth() + 1, eD = txCustomEnd.getDate();
+    startMs = toTreintaStartMs(sY, sM, sD);
+    endMs = toTreintaEndMs(eY, eM, eD);
+    startObj = new Date(sY, sM - 1, sD);
+    endObj = new Date(eY, eM - 1, eD);
   }
 
   return {
@@ -1382,7 +1382,11 @@ function renderTxPopupUI() {
     txPopupContent.appendChild(grid);
 
   } else if (txPeriodMode === "custom") {
-    // PERSONALIZADO
+    // PERSONALIZADO (formateo local para evitar desfase UTC después de las 21hs ART)
+    var formatLocalYMD = function(d) {
+      return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    };
+
     txPopupContent.innerHTML = '<div class="space-y-3 text-xs">' +
       '<p class="font-bold text-slate-700">Rango personalizado</p>' +
       '<div><label class="text-[10px] text-slate-400 block mb-0.5">Desde</label><input type="date" id="popCustomStart" class="w-full border rounded p-1 text-xs"></div>' +
@@ -1390,12 +1394,28 @@ function renderTxPopupUI() {
       '<button id="btnPopApplyCustom" class="w-full py-1.5 bg-indigo-600 text-white font-bold rounded-lg shadow-sm">Aplicar</button>' +
     '</div>';
 
-    document.getElementById("popCustomStart").value = txCustomStart.toISOString().split("T")[0];
-    document.getElementById("popCustomEnd").value = txCustomEnd.toISOString().split("T")[0];
+    document.getElementById("popCustomStart").value = formatLocalYMD(txCustomStart);
+    document.getElementById("popCustomEnd").value = formatLocalYMD(txCustomEnd);
 
     document.getElementById("btnPopApplyCustom").onclick = function() {
-      txCustomStart = new Date(document.getElementById("popCustomStart").value + "T00:00:00");
-      txCustomEnd = new Date(document.getElementById("popCustomEnd").value + "T23:59:59.999");
+      var sVal = document.getElementById("popCustomStart").value;
+      var eVal = document.getElementById("popCustomEnd").value;
+      if (!sVal || !eVal) return;
+
+      var sParts = sVal.split("-").map(Number);
+      var eParts = eVal.split("-").map(Number);
+      var newStart = new Date(sParts[0], sParts[1] - 1, sParts[2]);
+      var newEnd = new Date(eParts[0], eParts[1] - 1, eParts[2]);
+
+      // Si el usuario invierte las fechas, las reordena automáticamente
+      if (newStart > newEnd) {
+        txCustomStart = newEnd;
+        txCustomEnd = newStart;
+      } else {
+        txCustomStart = newStart;
+        txCustomEnd = newEnd;
+      }
+
       txDatePopupModal.classList.add("hidden");
       updateTxRangeLabel();
       resetAndFetchTransactions();
@@ -2021,21 +2041,23 @@ async function printReceipt(layoutType) {
       .replace(/{{SALDO_PENDIENTE_FILA_HALF}}/g, saldoFilaHalf)
       .replace(/{{TOTAL_ITEMS}}/g, products.length);
 
-    // El iframe debe tener exactamente el ancho físico de página para medir correctamente
+    // Ocultar fuera de pantalla SIN visibility: hidden para que Chromium sí lo pinte al imprimir
     var pFrame = document.createElement("iframe");
     pFrame.style.position = "fixed";
+    pFrame.style.top = "-9999px";
     pFrame.style.left = "-9999px";
-    pFrame.style.top = "0";
     pFrame.style.width = isFull ? "210mm" : "105mm";
     pFrame.style.height = "297mm";
     pFrame.style.border = "none";
-    pFrame.style.visibility = "hidden";
     document.body.appendChild(pFrame);
 
     var pDoc = pFrame.contentWindow.document;
     pDoc.open();
     pDoc.write(html);
     pDoc.close();
+
+    // Esperar un tick para asegurar que Chromium aplicó el CSS antes de medir el DOM
+    await new Promise(function(resolve) { setTimeout(resolve, 50); });
 
     // Medir alturas reales y distribuir en páginas antes de imprimir
     paginateAndRenderReceipt(pDoc, isFull, products);
