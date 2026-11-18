@@ -1800,8 +1800,9 @@ modalTxDetail.onclick = function(e) {
 
 // Cierre con Esc integrado
 document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape" || e.keyCode === 27) {
+  if (e.key === "Escape") {
     closeTxDetailModal();
+    closePrintStudio();
   }
 });
 
@@ -2678,21 +2679,24 @@ function renderStudioQueuePanel() {
         '<button type="button" class="btn-q-del px-1.5 py-0.5 rounded hover:bg-rose-50 text-rose-500 font-bold" title="Quitar">✕</button>' +
       '</div>';
 
-    row.querySelector(".btn-q-up").onclick = function() {
+    row.querySelector(".btn-q-up").onclick = function(e) {
+      e.stopPropagation();
       var tmp = printQueue[idx - 1];
       printQueue[idx - 1] = printQueue[idx];
       printQueue[idx] = tmp;
       renderStudioQueuePanel();
       renderPrintStudioPreview();
     };
-    row.querySelector(".btn-q-down").onclick = function() {
+    row.querySelector(".btn-q-down").onclick = function(e) {
+      e.stopPropagation();
       var tmp = printQueue[idx + 1];
       printQueue[idx + 1] = printQueue[idx];
       printQueue[idx] = tmp;
       renderStudioQueuePanel();
       renderPrintStudioPreview();
     };
-    row.querySelector(".btn-q-del").onclick = function() {
+    row.querySelector(".btn-q-del").onclick = function(e) {
+      e.stopPropagation();
       removeFromPrintQueue(item.id);
       renderStudioQueuePanel();
       renderPrintStudioPreview();
@@ -2768,9 +2772,6 @@ function closePrintStudio() {
 }
 
 document.getElementById("btnClosePrintStudio").onclick = closePrintStudio;
-document.getElementById("modalPrintStudio").onclick = function(e) {
-  if (!document.getElementById("modalPrintStudioCard").contains(e.target)) closePrintStudio();
-};
 
 
 // Activar delegación del hover de zoom en ambas tablas
