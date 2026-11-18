@@ -2,14 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Comprobante #{{TX_NUMBER}} - TRAPOS MDP</title>
+  <title>Comprobante - TRAPOS MDP</title>
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      color: #0f172a;
+    html, body {
       margin: 0;
       padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
     }
 
     .hidden { display: none !important; }
@@ -17,13 +18,7 @@
     /* Regla @page inyectada dinámicamente según formato */
     {{PAGE_RULE_CSS}}
 
-/* ================= ESTRUCTURA DE HOJAS PAGINADAS ================= */
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-    }
-
+    /* ================= ESTRUCTURA DE HOJAS INDIVIDUALES ================= */
     .sheet {
       page-break-after: always;
       break-after: page;
@@ -36,253 +31,260 @@
 
     .page-indicator {
       display: inline-block;
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 800;
       color: #4f46e5;
       background: #eef2ff;
       border: 1px solid #c7d2fe;
-      padding: 1px 6px;
+      padding: 1px 5px;
       border-radius: 4px;
-      margin-top: 3px;
+      margin-top: 2px;
     }
 
     .cont-notice {
       text-align: right;
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
       color: #64748b;
       border-top: 1px dashed #cbd5e1;
-      padding-top: 5px;
+      padding-top: 4px;
     }
 
-    /* ================= FORMATO 1: A4 COMPLETA (Totales anclados al pie) ================= */
-    body.layout-full {
-      font-size: 11px;
-    }
+    /* ================= FORMATO 1: A4 COMPLETA INDIVIDUAL ================= */
+    body.layout-full { font-size: 11px; }
     body.layout-full .sheet,
-    body.layout-full .measure-stage {
-      width: 180mm; /* 210mm - 15mm izq - 15mm der */
-    }
+    body.layout-full .measure-stage { width: 180mm; }
     body.layout-full .sheet {
       height: 270mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-    body.layout-full .sheet-body {
-      flex: 1 0 auto;
-    }
-    body.layout-full .sheet-footer {
-      margin-top: auto;
-      padding-top: 8px;
-    }
-    body.layout-full .measure-ruler {
-      height: 270mm;
-    }
+    body.layout-full .sheet-body { flex: 1 0 auto; }
+    body.layout-full .sheet-footer { margin-top: auto; padding-top: 8px; }
+    body.layout-full .measure-ruler { height: 270mm; }
 
     body.layout-full .header-box {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #0f172a;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px;
     }
     body.layout-full .header-cont {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1.5px solid #0f172a;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
-      font-size: 11px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1.5px solid #0f172a; padding-bottom: 5px; margin-bottom: 10px; font-size: 11px;
     }
-    body.layout-full .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    body.layout-full .logo-img {
-      height: 40px;
-      max-width: 65px;
-      object-fit: contain;
-    }
-    body.layout-full .logo-text {
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      line-height: 1;
-    }
+    body.layout-full .logo-container { display: flex; align-items: center; gap: 12px; }
+    body.layout-full .logo-img { height: 40px; max-width: 65px; object-fit: contain; }
+    body.layout-full .logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
 
     .meta-2col-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px 16px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 8px 14px;
-      margin-bottom: 12px;
-      font-size: 11px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px 14px; margin-bottom: 12px; font-size: 11px;
     }
     .meta-lbl { color: #64748b; }
 
-    body.layout-full table.products-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    body.layout-full table.products-table { width: 100%; border-collapse: collapse; }
     body.layout-full table.products-table th {
-      background: #0f172a;
-      color: #ffffff;
-      padding: 5px 8px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      background: #0f172a; color: #ffffff; padding: 5px 8px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
     }
     body.layout-full table.products-table td {
-      padding: 5px 8px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 11px;
-      vertical-align: top;
+      padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; vertical-align: top;
     }
 
     .totals-horizontal-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 16px;
-      text-align: center;
+      width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #cbd5e1;
+      border-radius: 8px; overflow: hidden; margin-bottom: 16px; text-align: center;
     }
     .totals-horizontal-table th {
-      background: #f1f5f9;
-      color: #475569;
-      font-size: 10px;
-      text-transform: uppercase;
-      padding: 6px 4px;
-      border-bottom: 1px solid #cbd5e1;
-      border-right: 1px solid #e2e8f0;
+      background: #f1f5f9; color: #475569; font-size: 10px; text-transform: uppercase;
+      padding: 6px 4px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #e2e8f0;
     }
     .totals-horizontal-table td {
-      padding: 8px 6px;
-      font-size: 12px;
-      font-weight: bold;
-      border-right: 1px solid #e2e8f0;
+      padding: 8px 6px; font-size: 12px; font-weight: bold; border-right: 1px solid #e2e8f0;
     }
-    .totals-horizontal-table th:last-child,
-    .totals-horizontal-table td:last-child {
-      border-right: none;
-    }
+    .totals-horizontal-table th:last-child, .totals-horizontal-table td:last-child { border-right: none; }
 
     body.layout-full .sign-box {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      font-size: 10.5px;
-      color: #64748b;
-      padding-top: 6px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      font-size: 10.5px; color: #64748b; padding-top: 6px;
     }
     body.layout-full .sign-line {
-      width: 220px;
-      border-top: 1px dashed #94a3b8;
-      text-align: center;
-      padding-top: 5px;
+      width: 220px; border-top: 1px dashed #94a3b8; text-align: center; padding-top: 5px;
     }
 
-    /* ================= FORMATO 2: MEDIA A4 (105mm x 297mm -> Totales pegados a productos) ================= */
-    body.layout-half {
-      font-size: 9.5px;
-    }
+    /* ================= FORMATO 2: MEDIA A4 INDIVIDUAL (105mm x 297mm) ================= */
+    body.layout-half { font-size: 9.5px; }
     body.layout-half .sheet,
-    body.layout-half .measure-stage {
-      width: 93mm; /* 105mm - 6mm izq - 6mm der */
+    body.layout-half .measure-stage { width: 93mm; }
+    body.layout-half .sheet { display: block; height: auto; }
+    body.layout-half .sheet-footer { margin-top: 8px; padding-top: 0; }
+    body.layout-half .measure-ruler { height: 280mm; }
+
+    /* Estilos compartidos de ticket compacto (Media A4 individual y Print Studio) */
+    .header-strip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
+    .logo-img-small { height: 26px; max-width: 42px; object-fit: contain; }
+    .header-cont-half {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #0f172a; padding-bottom: 3px; margin-bottom: 4px; font-size: 9.5px;
     }
-    body.layout-half .sheet {
-      display: block;
-      height: auto; /* No estira la hoja: totales quedan pegados debajo del último ítem */
+    .meta-half-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px;
+      margin-bottom: 5px; font-size: 9px; line-height: 1.3;
     }
-    body.layout-half .sheet-footer {
-      margin-top: 8px;
-      padding-top: 0;
+    .half-section-title {
+      font-size: 8.5px; font-weight: bold; text-transform: uppercase; color: #64748b;
+      margin-bottom: 2px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;
     }
-    body.layout-half .measure-ruler {
-      height: 280mm; /* Límite de altura real para saber cuándo saltar a pág 2 */
+    .half-item-row { padding: 3.5px 0; border-bottom: 1px dashed #e2e8f0; font-size: 9.5px; }
+    .half-item-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 6px; font-weight: bold; color: #1e293b;
+    }
+    .half-item-name { flex: 1; word-break: break-word; }
+    .half-item-total { white-space: nowrap; }
+    .half-item-sub { color: #64748b; font-size: 8.5px; margin-top: 1px; }
+
+    .half-totals-box {
+      margin-top: 4px; padding-top: 4px; border-top: 1px solid #0f172a; font-size: 9.5px;
+    }
+    .half-sign-line {
+      margin-top: 16px; text-align: center; border-top: 1px dashed #94a3b8;
+      padding-top: 4px; font-size: 8.5px; color: #64748b;
     }
 
+    /* ================= PRINT STUDIO: HOJAS A4 MULTI-COMPROBANTE ================= */
+    body.layout-studio { font-size: 9.5px; }
 
-    body.layout-half .header-strip {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 2px;
+    @media screen {
+      body.layout-studio {
+        background: #334155;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      body.layout-studio .a4-page {
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        padding: 6mm;
+        zoom: var(--preview-zoom, 0.8);
+      }
+      body.layout-studio.studio-portrait .a4-page { width: 210mm; height: 297mm; }
+      body.layout-studio.studio-landscape .a4-page { width: 297mm; height: 210mm; }
     }
-    body.layout-half .logo-img-small {
-      height: 28px;
-      max-width: 45px;
-      object-fit: contain;
+
+    @media print {
+      body.layout-studio { background: #ffffff; padding: 0; }
+      body.layout-studio .a4-page {
+        zoom: 1 !important;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+      }
+      body.layout-studio.studio-portrait .a4-page { width: 198mm; height: 285mm; }
+      body.layout-studio.studio-landscape .a4-page { width: 285mm; height: 198mm; }
     }
-    body.layout-half .header-cont-half {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #0f172a;
-      padding-bottom: 4px;
-      margin-bottom: 5px;
-      font-size: 9.5px;
+
+    .a4-page {
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
     }
-    body.layout-half .meta-half-grid {
+    .a4-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .studio-grid {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Grillas exactas según modo */
+    .studio-grid-auto {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 3px 6px;
-      margin-bottom: 6px;
-      font-size: 9px;
-      line-height: 1.35;
+      grid-template-columns: 96mm 96mm;
+      column-gap: 6mm;
+      align-items: start;
     }
-    body.layout-half .half-section-title {
-      font-size: 9px;
-      font-weight: bold;
-      text-transform: uppercase;
-      color: #64748b;
-      margin-bottom: 2px;
-      border-bottom: 1px solid #cbd5e1;
-      padding-bottom: 2px;
+    .studio-grid-2x1 {
+      display: grid;
+      grid-template-columns: 96mm 96mm;
+      column-gap: 6mm;
+      align-items: start;
     }
-    body.layout-half .half-item-row {
-      padding: 4px 0;
-      border-bottom: 1px dashed #e2e8f0;
-      font-size: 10px;
+    .studio-grid-3x1 {
+      display: grid;
+      grid-template-columns: 91mm 91mm 91mm;
+      column-gap: 6mm;
+      align-items: start;
     }
-    body.layout-half .half-item-top {
+    .studio-grid-2x2 {
+      display: grid;
+      grid-template-columns: 96mm 96mm;
+      grid-template-rows: 139mm 139mm;
+      gap: 6mm;
+      align-items: start;
+    }
+
+    /* Anchos de medición exactos */
+    body.studio-w96 .measure-stage { width: 96mm; }
+    body.studio-w91 .measure-stage { width: 91mm; }
+    body.studio-h284 .measure-ruler { height: 284mm; }
+    body.studio-h197 .measure-ruler { height: 197mm; }
+    body.studio-h137 .measure-ruler { height: 137mm; }
+
+    /* Compactación leve para 2x2: estira capacidad hasta ~6-7 ítems legibles */
+    body.studio-mode-2x2 .logo-img-small { height: 22px; }
+    body.studio-mode-2x2 .meta-half-grid { margin-bottom: 3px; font-size: 8.5px; line-height: 1.25; }
+    body.studio-mode-2x2 .half-item-row { padding: 2.5px 0; font-size: 9px; }
+    body.studio-mode-2x2 .half-item-sub { font-size: 8px; }
+    body.studio-mode-2x2 .half-totals-box { font-size: 9px; }
+    body.studio-mode-2x2 .half-sign-line { margin-top: 9px; font-size: 8px; }
+
+    /* Separador horizontal entre tickets apilados en Auto (2 cols) */
+    .auto-col {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 6px;
-      font-weight: bold;
-      color: #1e293b;
+      flex-direction: column;
     }
-    body.layout-half .half-item-name {
-      flex: 1;
-      word-break: break-word;
+    .auto-ticket-divider {
+      border-top: 1px dashed #94a3b8;
+      margin: 3.5mm 0;
     }
-    body.layout-half .half-item-total {
-      white-space: nowrap;
+    body.no-cut-lines .auto-ticket-divider {
+      border-top-color: transparent;
     }
-    body.layout-half .half-item-sub {
-      color: #64748b;
-      font-size: 9px;
-      margin-top: 1px;
+
+    /* Guías de corte de hoja completa */
+    .cut-line-v, .cut-line-h {
+      position: absolute;
+      pointer-events: none;
+    }
+    .cut-line-v {
+      top: 0;
+      bottom: 0;
+      border-left: 1px dashed #94a3b8;
+    }
+    .cut-line-h {
+      left: 0;
+      right: 0;
+      border-top: 1px dashed #94a3b8;
+    }
+    body.no-cut-lines .cut-line-v,
+    body.no-cut-lines .cut-line-h {
+      display: none !important;
     }
   </style>
 </head>
 <body class="{{LAYOUT_CLASS}}">
 
-  <!-- Contenedor donde app.js renderiza las hojas paginadas -->
+  <!-- Contenedor donde app.js renderiza las hojas (individual o Print Studio) -->
   <div id="sheetsRoot"></div>
 
-  <!-- ================= PLANTILLAS A4 COMPLETA ================= -->
+  <!-- ================= PLANTILLAS A4 COMPLETA INDIVIDUAL ================= -->
   <template id="tplFullHeader">
     <div>
       <div class="header-box">
@@ -302,10 +304,8 @@
       <div class="meta-2col-grid">
         <div><span class="meta-lbl">Fecha:</span> <strong>{{FECHA_HORA}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Comprobante:</span> <strong style="color: #4f46e5; font-size: 12px;">#{{TX_NUMBER}}</strong></div>
-
         <div><span class="meta-lbl">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Vendedor:</span> <strong>{{VENDEDOR}}</strong></div>
-
         <div><span class="meta-lbl">Pago:</span> <strong>{{MEDIO_PAGO}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Estado:</span> <strong>{{ESTADO_LABEL}}</strong></div>
       </div>
@@ -314,9 +314,7 @@
 
   <template id="tplFullContHeader">
     <div class="header-cont">
-      <div>
-        <strong>TRAPOS MDP</strong> · Comprobante <strong style="color: #4f46e5;">#{{TX_NUMBER}}</strong> · {{CLIENTE}}
-      </div>
+      <div><strong>TRAPOS MDP</strong> · Comprobante <strong style="color: #4f46e5;">#{{TX_NUMBER}}</strong> · {{CLIENTE}}</div>
       <div class="page-indicator hidden"></div>
     </div>
   </template>
@@ -340,13 +338,7 @@
     <div>
       <table class="totals-horizontal-table">
         <thead>
-          <tr>
-            <th>Subtotal</th>
-            <th>Descuento</th>
-            <th>Total Venta</th>
-            <th>Total Abonado</th>
-            <th>Pendiente</th>
-          </tr>
+          <tr><th>Subtotal</th><th>Descuento</th><th>Total Venta</th><th>Total Abonado</th><th>Pendiente</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -358,7 +350,6 @@
           </tr>
         </tbody>
       </table>
-
       <div class="sign-box">
         <div>Comprobante no válido como factura.</div>
         <div class="sign-line">Firma y Aclaración de Recepción</div>
@@ -366,29 +357,25 @@
     </div>
   </template>
 
-  <!-- ================= PLANTILLAS MEDIA A4 (105mm x 297mm) ================= -->
+  <!-- ================= PLANTILLAS COMPACTAS (MEDIA A4 Y PRINT STUDIO) ================= -->
   <template id="tplHalfHeader">
     <div>
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
         <div style="flex: 1; text-align: center;">
           <div class="header-strip">
             <img src="{{LOGO_URL}}" class="logo-img-small" alt="Logo">
-            <div style="font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>
+            <div style="font-size: 14px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>
           </div>
-          <div style="font-size: 9px; color: #64748b;">Distribuidora Mayorista</div>
+          <div style="font-size: 8.5px; color: #64748b;">Distribuidora Mayorista</div>
         </div>
-        <div class="page-indicator hidden" style="font-size: 8.5px; margin-top: 0;"></div>
+        <div class="page-indicator hidden" style="font-size: 8px; margin-top: 0;"></div>
       </div>
-
-      <div style="border-top: 1px solid #0f172a; margin: 5px 0;"></div>
-
+      <div style="border-top: 1px solid #0f172a; margin: 4px 0;"></div>
       <div class="meta-half-grid">
         <div><span class="meta-lbl">Fecha:</span> <strong>{{FECHA_HORA}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Comp:</span> <strong style="color: #4f46e5;">#{{TX_NUMBER}}</strong></div>
-
         <div><span class="meta-lbl">Cliente:</span> <strong>{{CLIENTE}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Vend:</span> <strong>{{VENDEDOR}}</strong></div>
-
         <div><span class="meta-lbl">Pago:</span> <strong>{{MEDIO_PAGO}}</strong></div>
         <div style="text-align: right;"><span class="meta-lbl">Estado:</span> <strong>{{ESTADO_LABEL}}</strong></div>
       </div>
@@ -398,7 +385,7 @@
   <template id="tplHalfContHeader">
     <div class="header-cont-half">
       <div><strong>#{{TX_NUMBER}}</strong> · {{CLIENTE}}</div>
-      <div class="page-indicator hidden" style="font-size: 8.5px; margin-top: 0;"></div>
+      <div class="page-indicator hidden" style="font-size: 8px; margin-top: 0;"></div>
     </div>
   </template>
 
@@ -411,12 +398,12 @@
 
   <template id="tplHalfFooter">
     <div>
-      <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #0f172a; font-size: 10px;">
+      <div class="half-totals-box">
         <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
           <span>Subtotal:</span><span>{{SUBTOTAL}}</span>
         </div>
         {{DESCUENTO_BLOQUE_HALF}}
-        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900; margin-top: 4px; border-top: 1px dashed #0f172a; padding-top: 3px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 900; margin-top: 3px; border-top: 1px dashed #0f172a; padding-top: 3px;">
           <span>TOTAL VENTA:</span><span>{{TOTAL}}</span>
         </div>
         <div style="display: flex; justify-content: space-between; color: #059669; font-weight: bold; margin-top: 2px;">
@@ -424,10 +411,7 @@
         </div>
         {{SALDO_PENDIENTE_FILA_HALF}}
       </div>
-
-      <div style="margin-top: 20px; text-align: center; border-top: 1px dashed #94a3b8; padding-top: 5px; font-size: 8.5px; color: #64748b;">
-        Firma Conforme Recepción
-      </div>
+      <div class="half-sign-line">Firma Conforme Recepción</div>
     </div>
   </template>
 

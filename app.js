@@ -1133,6 +1133,11 @@ var txIsLoading = false;
 var txHasMore = true;
 var txSearchTerm = "";
 var currentTxDetailData = null;
+var txDetailCache = {}; // Caché en memoria: txId -> data completo + _payments + totales
+var printQueue = [];    // [{ id, number, client, value }]
+var studioMode = "auto"; // "auto" | "2x1" | "3x1" | "2x2"
+var studioShowCutLines = true;
+var comprobanteRawCache = null;
 
 // Elementos del popup
 var btnTxDatePickerTrigger = document.getElementById("btnTxDatePickerTrigger");
@@ -1474,7 +1479,7 @@ function resetAndFetchTransactions() {
   allTransactions = [];
   txCurrentPage = 1;
   txHasMore = true;
-  document.getElementById("transactionsTableBody").innerHTML = '<tr><td colspan="6" class="text-center py-8 text-indigo-600 font-medium">Cargando comprobantes...</td></tr>';
+  document.getElementById("transactionsTableBody").innerHTML = '<tr><td colspan="7" class="text-center py-8 text-indigo-600 font-medium">Cargando comprobantes...</td></tr>';
   fetchTxBalance();
   fetchTransactionsPage();
 }
@@ -1545,7 +1550,7 @@ function renderTransactionsTable() {
   document.getElementById("txTableCount").textContent = "Mostrando " + filtered.length + " de " + allTransactions.length + " comprobantes";
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron comprobantes para este período o búsqueda.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No se encontraron comprobantes para este período o búsqueda.</td></tr>';
     return;
   }
 
@@ -1554,8 +1559,16 @@ function renderTransactionsTable() {
     var tr = document.createElement("tr");
     // Fila clickeable con efecto hover y el ID de la transacción asociado:
     tr.className = "hover:bg-indigo-50/40 cursor-pointer transition-colors";
-    tr.dataset.txId = tx.transactionId || tx.id;
-    tr.dataset.rowValue = tx.value || 0; // 👈 Guarda el valor de este abono puntual
+    //tr.dataset.txId = tx.transactionId || tx.id;
+    //tr.dataset.rowValue = tx.value || 0; // 👈 Guarda el valor de este abono puntual
+
+    var txRealId = tx.transactionId || tx.id;
+    var txNumLabel = tx.transactionCount || tx.id.slice(0, 8);
+    var isQueued = isTxInPrintQueue(txRealId);
+
+    tr.dataset.txId = txRealId;
+    tr.dataset.rowValue = tx.value || 0;
+
 
 
     // Formato ultra-compacto 24hs sin preposiciones "de": DD/MM/AAAA HH:mm
@@ -1577,7 +1590,16 @@ function renderTransactionsTable() {
 
     var paymentMethod = tx.paymentTypeId === 1 ? "Efectivo" : "Otro";
 
-    tr.innerHTML = '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + (tx.transactionCount || tx.id.slice(0, 8)) + '</td>' +
+    tr.innerHTML = '<td class="py-3 pl-4 pr-2 text-center tx-check-cell">' +
+                     '<input type="checkbox" class="chk-tx-queue rounded text-indigo-600 cursor-pointer" ' +
+                     'data-tx-id="' + txRealId + '" ' +
+                     'data-tx-num="' + escapeHtml(txNumLabel) + '" ' +
+                     'data-tx-client="' + escapeHtml(tx.contactName || "Consumidor Final") + '" ' +
+                     'data-tx-val="' + (tx.value || 0) + '" ' +
+                     (isQueued ? 'checked' : '') + '>' +
+                   '</td>' +
+                   '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + txNumLabel + '</td>' +
+                   '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + (tx.transactionCount || tx.id.slice(0, 8)) + '</td>' +
                    '<td class="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">' + dateFormatted + '</td>' +
                    '<td class="py-3 px-4">' + clientDisplay + '</td>' +
                    '<td class="py-3 px-4 text-slate-600">' + (tx.description || "-") + '</td>' +
@@ -1586,6 +1608,9 @@ function renderTransactionsTable() {
 
     body.appendChild(tr);
   });
+
+  //sincroniza el checkbox maestro:
+  syncSelectAllcheckbox();
 }
 
 document.getElementById("txSearchInput").oninput = function(e) {
@@ -1607,12 +1632,12 @@ var modalTxProductsList = document.getElementById("modalTxProductsList");
 
 // Clic en cualquier fila de la tabla de comprobantes (delegación de eventos)
 document.getElementById("transactionsTableBody").addEventListener("click", function(e) {
+  if (e.target.closest(".tx-check-cell")) return; // No abrir modal al marcar checkbox
   var row = e.target.closest("tr");
   if (row && row.dataset.txId) {
     openTransactionDetail(row.dataset.txId, Number(row.dataset.rowValue) || 0);
   }
 });
-
 
 async function openTransactionDetail(txId, rowValue) {
   document.body.classList.add("overflow-hidden");
@@ -1670,6 +1695,10 @@ async function openTransactionDetail(txId, rowValue) {
     currentTxDetailData._isPaid = isPaid;
     currentTxDetailData._totalPaid = totalPaid;
     currentTxDetailData._balanceRemaining = balanceRemaining;
+    currentTxDetailData._txId = txId;
+    txDetailCache[txId] = currentTxDetailData;
+    syncModalQueueButton(txId, tx.transactionCount || tx.id.slice(0, 8), contact.name || "Consumidor Final", rowValue || saleTotal);
+
 
     // Actualizar Estado Visual
     var statusBadge = document.getElementById("modalTxStatusBadge");
@@ -2081,6 +2110,667 @@ async function printReceipt(layoutType) {
 }
 document.getElementById("btnPrintA4Full").onclick = function() { printReceipt("a4-full"); };
 document.getElementById("btnPrintA4Half").onclick = function() { printReceipt("a4-half"); };
+
+// ==================== COLA DE IMPRESIÓN Y PRINT STUDIO A4 ====================
+function isTxInPrintQueue(txId) {
+  return printQueue.some(function(item) { return item.id === txId; });
+}
+
+function addToPrintQueue(item) {
+  if (!item.id || isTxInPrintQueue(item.id)) return;
+  printQueue.push(item);
+  updatePrintQueueUI();
+}
+
+function removeFromPrintQueue(txId) {
+  printQueue = printQueue.filter(function(item) { return item.id !== txId; });
+  updatePrintQueueUI();
+}
+
+function updatePrintQueueUI() {
+  var bar = document.getElementById("printQueueBar");
+  var countLbl = document.getElementById("lblPrintQueueCount");
+  countLbl.textContent = printQueue.length;
+
+  if (printQueue.length > 0) {
+    bar.classList.remove("hidden");
+  } else {
+    bar.classList.add("hidden");
+  }
+
+  document.querySelectorAll(".chk-tx-queue").forEach(function(chk) {
+    chk.checked = isTxInPrintQueue(chk.dataset.txId);
+  });
+  syncSelectAllCheckbox();
+
+  if (currentTxDetailData && currentTxDetailData._txId) {
+    var tx = currentTxDetailData.transaction || {};
+    var contact = tx.contact || {};
+    syncModalQueueButton(
+      currentTxDetailData._txId,
+      tx.transactionCount || currentTxDetailData._txId.slice(0, 8),
+      contact.name || "Consumidor Final",
+      currentTxDetailData._rowValue || 0
+    );
+  }
+}
+
+function syncSelectAllCheckbox() {
+  var chkAll = document.getElementById("chkTxSelectAll");
+  if (!chkAll) return;
+  var boxes = Array.prototype.slice.call(document.querySelectorAll(".chk-tx-queue"));
+  chkAll.checked = boxes.length > 0 && boxes.every(function(b) { return b.checked; });
+}
+
+function syncModalQueueButton(txId, num, client, val) {
+  var btn = document.getElementById("btnModalToggleQueue");
+  if (!btn) return;
+  var queued = isTxInPrintQueue(txId);
+  if (queued) {
+    btn.className = "px-3 py-1.5 bg-indigo-600 text-white font-bold rounded-lg text-xs transition flex items-center gap-1";
+    btn.innerHTML = "<span>✓</span> En cola";
+  } else {
+    btn.className = "px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs border border-emerald-200 transition flex items-center gap-1";
+    btn.innerHTML = "<span>➕</span> A cola";
+  }
+  btn.onclick = function() {
+    if (isTxInPrintQueue(txId)) removeFromPrintQueue(txId);
+    else addToPrintQueue({ id: txId, number: num, client: client, value: val });
+  };
+}
+
+document.getElementById("transactionsTableBody").addEventListener("change", function(e) {
+  if (!e.target.classList.contains("chk-tx-queue")) return;
+  var el = e.target;
+  if (el.checked) {
+    addToPrintQueue({
+      id: el.dataset.txId,
+      number: el.dataset.txNum,
+      client: el.dataset.txClient,
+      value: Number(el.dataset.txVal) || 0
+    });
+  } else {
+    removeFromPrintQueue(el.dataset.txId);
+  }
+});
+
+document.getElementById("chkTxSelectAll").onchange = function(e) {
+  var checked = e.target.checked;
+  document.querySelectorAll(".chk-tx-queue").forEach(function(chk) {
+    if (checked) {
+      addToPrintQueue({
+        id: chk.dataset.txId,
+        number: chk.dataset.txNum,
+        client: chk.dataset.txClient,
+        value: Number(chk.dataset.txVal) || 0
+      });
+    } else {
+      removeFromPrintQueue(chk.dataset.txId);
+    }
+  });
+};
+
+document.getElementById("btnClearPrintQueue").onclick = function() {
+  printQueue = [];
+  updatePrintQueueUI();
+};
+
+// Descarga segura sin 429: caché + lotes de 2 con pausa y backoff retry
+async function fetchWithRetry429(url, retries) {
+  var maxRetries = retries || 4;
+  for (var attempt = 0; attempt <= maxRetries; attempt++) {
+    var res = await fetch(url, { headers: getHeaders() });
+    if (res.status === 429) {
+      await new Promise(function(r) { setTimeout(r, 1200 * (attempt + 1)); });
+      continue;
+    }
+    return res;
+  }
+  return null;
+}
+
+async function ensureQueueDetailsLoaded(onProgress) {
+  var missing = printQueue.filter(function(item) { return !txDetailCache[item.id]; });
+  var total = missing.length;
+  var done = 0;
+  var CONCURRENCY = 2;
+
+  for (var i = 0; i < missing.length; i += CONCURRENCY) {
+    var chunk = missing.slice(i, i + CONCURRENCY);
+    await Promise.all(chunk.map(async function(item) {
+      try {
+        var rTx = await fetchWithRetry429("https://core-api-gateway.treinta.co/transactions/" + item.id);
+        var rPay = await fetchWithRetry429("https://api.prod.treinta.co/payment/by-transaction/" + item.id).catch(function() { return null; });
+        if (rTx && rTx.ok) {
+          var data = await rTx.json();
+          var payments = (rPay && rPay.ok) ? await rPay.json() : [];
+          var tx = data.transaction || {};
+          var totals = data.totals || {};
+          var saleTotal = totals.total || tx.value || 0;
+          var totalPaid = payments.length > 0
+            ? payments.reduce(function(acc, p) { return acc + (p.value || 0); }, 0)
+            : (item.value || saleTotal);
+          var balance = Math.max(0, saleTotal - totalPaid);
+
+          data._txId = item.id;
+          data._payments = payments;
+          data._rowValue = item.value;
+          data._totalPaid = totalPaid;
+          data._balanceRemaining = balance;
+          data._isPaid = balance <= 1;
+          txDetailCache[item.id] = data;
+        }
+      } catch (err) {
+        console.error("Error cargando tx para imprimir:", item.id, err);
+      } finally {
+        done++;
+        if (onProgress) onProgress(done, total);
+      }
+    }));
+
+    if (i + CONCURRENCY < missing.length) {
+      await new Promise(function(r) { setTimeout(r, 350); });
+    }
+  }
+}
+
+async function getComprobanteTemplate() {
+  if (!comprobanteRawCache) {
+    var res = await fetch("https://arielfmdp.github.io/treinta-dashboard/comprobante.html?v=" + Date.now());
+    if (!res.ok) throw new Error("No se pudo cargar comprobante.html");
+    comprobanteRawCache = await res.text();
+  }
+  return comprobanteRawCache;
+}
+
+function buildCompactDataMap(data) {
+  var tx = data.transaction || {};
+  var totals = data.totals || {};
+  var products = data.products || [];
+  var contact = tx.contact || {};
+  var user = tx.user || {};
+
+  var rawEmpName = employeesMap[tx.userId] || employeesMap[user.id] || "";
+  if (!rawEmpName && (user.firstName || user.lastName)) {
+    rawEmpName = (user.firstName + " " + (user.lastName || "")).trim();
+  }
+
+  var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : Date.now());
+  var dObj = new Date(dMs);
+  var dateStr = ("0" + dObj.getDate()).slice(-2) + "/" + ("0" + (dObj.getMonth() + 1)).slice(-2) + "/" + dObj.getFullYear() + " " +
+                ("0" + dObj.getHours()).slice(-2) + ":" + ("0" + dObj.getMinutes()).slice(-2);
+
+  var discountNum = totals.totalDiscount || 0;
+  var totalPaidNum = data._totalPaid !== undefined ? data._totalPaid : (totals.total || tx.value || 0);
+  var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
+
+  return {
+    logoUrl: "https://arielfmdp.github.io/treinta-dashboard/LOGO.png",
+    txNumber: escapeHtml(tx.transactionCount || (tx.id || "").slice(0, 8)),
+    clientName: escapeHtml(contact.name || "Consumidor Final"),
+    dateStr: dateStr,
+    empName: escapeHtml(rawEmpName || "Vendedor Millenial"),
+    paymentLabel: tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"),
+    statusLabel: (data._isPaid !== undefined ? data._isPaid : true) ? "Pagada" : "Pendiente",
+    subtotalVal: currencyFormatter.format(totals.subtotal || totals.total || tx.value || 0),
+    descBlockHalf: discountNum > 0
+      ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
+      : '',
+    totalVal: currencyFormatter.format(totals.total || tx.value || 0),
+    totalPaidVal: currencyFormatter.format(totalPaidNum),
+    saldoFilaHalf: balanceDue > 1
+      ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
+      : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>',
+    totalItems: products.length
+  };
+}
+
+function hydrateTplHtml(tplEl, map) {
+  var wrapper = tplEl.ownerDocument.createElement("div");
+  wrapper.innerHTML = tplEl.innerHTML
+    .replace(/{{LOGO_URL}}/g, map.logoUrl)
+    .replace(/{{TX_NUMBER}}/g, map.txNumber)
+    .replace(/{{CLIENTE}}/g, map.clientName)
+    .replace(/{{FECHA_HORA}}/g, map.dateStr)
+    .replace(/{{VENDEDOR}}/g, map.empName)
+    .replace(/{{MEDIO_PAGO}}/g, map.paymentLabel)
+    .replace(/{{ESTADO_LABEL}}/g, map.statusLabel)
+    .replace(/{{SUBTOTAL}}/g, map.subtotalVal)
+    .replace("{{DESCUENTO_BLOQUE_HALF}}", map.descBlockHalf)
+    .replace(/{{TOTAL}}/g, map.totalVal)
+    .replace(/{{TOTAL_ABONADO}}/g, map.totalPaidVal)
+    .replace("{{SALDO_PENDIENTE_FILA_HALF}}", map.saldoFilaHalf)
+    .replace(/{{TOTAL_ITEMS}}/g, map.totalItems);
+  return wrapper.firstElementChild;
+}
+
+function buildStudioTicketBlocks(doc, data, measureStage, maxSlotH) {
+  var map = buildCompactDataMap(data);
+  var products = data.products || [];
+
+  var tplHeader = doc.getElementById("tplHalfHeader");
+  var tplContHeader = doc.getElementById("tplHalfContHeader");
+  var tplItemsWrap = doc.getElementById("tplHalfItemsWrap");
+  var tplFooter = doc.getElementById("tplHalfFooter");
+
+  function measure(el) {
+    measureStage.appendChild(el);
+    var h = el.getBoundingClientRect().height;
+    measureStage.removeChild(el);
+    return h;
+  }
+
+  var hProbe = hydrateTplHtml(tplHeader, map);
+  var b1 = hProbe.querySelector(".page-indicator");
+  if (b1) { b1.classList.remove("hidden"); b1.textContent = "Pág. 1 de 9"; }
+  var hHeader = measure(hProbe);
+
+  var hcProbe = hydrateTplHtml(tplContHeader, map);
+  var b2 = hcProbe.querySelector(".page-indicator");
+  if (b2) { b2.classList.remove("hidden"); b2.textContent = "Pág. 2 de 9"; }
+  var hContHeader = measure(hcProbe);
+
+  var hItemsHead = measure(hydrateTplHtml(tplItemsWrap, map));
+  var hFooter = measure(hydrateTplHtml(tplFooter, map));
+
+  var rowsBox = hydrateTplHtml(tplItemsWrap, map);
+  var rowsTarget = rowsBox.querySelector(".items-target");
+  var rowNodes = products.map(function(p, idx) {
+    var node = buildProductNode(doc, false, p, idx);
+    rowsTarget.appendChild(node);
+    return node;
+  });
+  measureStage.appendChild(rowsBox);
+  var rowHeights = rowNodes.map(function(n) { return n.getBoundingClientRect().height; });
+  measureStage.removeChild(rowsBox);
+
+  // Dividir comprobante en bloques si excede maxSlotH
+  var pages = [];
+  var curItems = [];
+  var curUsed = hHeader + hItemsHead;
+
+  for (var i = 0; i < products.length; i++) {
+    var rh = rowHeights[i];
+    if (curUsed + rh > maxSlotH && curItems.length > 0) {
+      pages.push({ items: curItems, used: curUsed });
+      curItems = [];
+      curUsed = hContHeader + hItemsHead;
+    }
+    curItems.push(i);
+    curUsed += rh;
+  }
+  if (curItems.length > 0 || pages.length === 0) {
+    pages.push({ items: curItems, used: curUsed });
+  }
+
+  var footerReserve = hFooter + 8;
+  var last = pages[pages.length - 1];
+  if (last.used + footerReserve > maxSlotH) {
+    var moved = [];
+    while (last.items.length > 1 && last.used + footerReserve > maxSlotH) {
+      var popIdx = last.items.pop();
+      last.used -= rowHeights[popIdx];
+      moved.unshift(popIdx);
+    }
+    if (moved.length > 0) {
+      var nextUsed = hContHeader + hItemsHead + moved.reduce(function(a, idx) { return a + rowHeights[idx]; }, 0);
+      pages.push({ items: moved, used: nextUsed });
+    } else {
+      pages.push({ items: [], used: hContHeader });
+    }
+  }
+
+  var totalPages = pages.length;
+  var blocks = [];
+
+  pages.forEach(function(pData, pIdx) {
+    var blockEl = doc.createElement("div");
+    blockEl.className = "studio-ticket-block";
+
+    var hdr = hydrateTplHtml(pIdx === 0 ? tplHeader : tplContHeader, map);
+    if (totalPages > 1) {
+      var badge = hdr.querySelector(".page-indicator");
+      if (badge) {
+        badge.textContent = "Pág. " + (pIdx + 1) + " de " + totalPages;
+        badge.classList.remove("hidden");
+      }
+    }
+    blockEl.appendChild(hdr);
+
+    if (pData.items.length > 0) {
+      var wrap = hydrateTplHtml(tplItemsWrap, map);
+      var tgt = wrap.querySelector(".items-target");
+      pData.items.forEach(function(prodIdx) {
+        tgt.appendChild(buildProductNode(doc, false, products[prodIdx], prodIdx));
+      });
+      blockEl.appendChild(wrap);
+    }
+
+    if (pIdx === totalPages - 1) {
+      blockEl.appendChild(hydrateTplHtml(tplFooter, map));
+    } else {
+      var notice = doc.createElement("div");
+      notice.className = "cont-notice";
+      notice.style.marginTop = "4px";
+      notice.textContent = "Continúa (" + (pIdx + 2) + "/" + totalPages + ") →";
+      blockEl.appendChild(notice);
+    }
+
+    var actualHeight = measure(blockEl);
+    blocks.push({
+      el: blockEl,
+      height: actualHeight,
+      txNumber: map.txNumber,
+      totalPages: totalPages
+    });
+  });
+
+  return blocks;
+}
+
+function createStudioA4Sheet(doc, mode) {
+  var page = doc.createElement("div");
+  page.className = "a4-page";
+  var grid = doc.createElement("div");
+  grid.className = "studio-grid studio-grid-" + mode;
+
+  // Agregar líneas de corte según geometría del modo
+  if (mode === "auto" || mode === "2x1") {
+    var vLine = doc.createElement("div");
+    vLine.className = "cut-line-v";
+    vLine.style.left = "50%";
+    grid.appendChild(vLine);
+  } else if (mode === "3x1") {
+    var v1 = doc.createElement("div");
+    v1.className = "cut-line-v";
+    v1.style.left = "calc((100% - 12mm) / 3 + 3mm)";
+    var v2 = doc.createElement("div");
+    v2.className = "cut-line-v";
+    v2.style.left = "calc(2 * (100% - 12mm) / 3 + 9mm)";
+    grid.appendChild(v1);
+    grid.appendChild(v2);
+  } else if (mode === "2x2") {
+    var vHalf = doc.createElement("div");
+    vHalf.className = "cut-line-v";
+    vHalf.style.left = "50%";
+    var hHalf = doc.createElement("div");
+    hHalf.className = "cut-line-h";
+    hHalf.style.top = "50%";
+    grid.appendChild(vHalf);
+    grid.appendChild(hHalf);
+  }
+
+  page.appendChild(grid);
+  return { page: page, grid: grid };
+}
+
+async function renderPrintStudioPreview() {
+  var frame = document.getElementById("printPreviewFrame");
+  var summaryLbl = document.getElementById("studioSummaryLbl");
+  var warnBanner = document.getElementById("studioWarningsBanner");
+  var btnPrint = document.getElementById("btnStudioPrintNow");
+
+  if (printQueue.length === 0) {
+    summaryLbl.textContent = "Cola vacía";
+    warnBanner.classList.add("hidden");
+    btnPrint.disabled = true;
+    var emptyDoc = frame.contentWindow.document;
+    emptyDoc.open();
+    emptyDoc.write("<!DOCTYPE html><html><body style='background:#334155;color:#cbd5e1;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;'>Agrega comprobantes a la cola para previsualizar.</body></html>");
+    emptyDoc.close();
+    return;
+  }
+
+  btnPrint.disabled = false;
+  var rawHtml = await getComprobanteTemplate();
+
+  var isLandscape = studioMode === "3x1";
+  var pageRuleCss = isLandscape
+    ? "@page { size: A4 landscape; margin: 6mm; }"
+    : "@page { size: A4 portrait; margin: 6mm; }";
+
+  var layoutClasses = [
+    "layout-studio",
+    isLandscape ? "studio-landscape" : "studio-portrait",
+    isLandscape ? "studio-w91" : "studio-w96",
+    studioMode === "2x2" ? "studio-h137 studio-mode-2x2" : (isLandscape ? "studio-h197" : "studio-h284")
+  ];
+  if (!studioShowCutLines) layoutClasses.push("no-cut-lines");
+
+  // Zoom óptimo para encajar el ancho de A4 dentro del contenedor visible
+  var wrapWidth = document.getElementById("studioCanvasWrap").clientWidth || 760;
+  var pagePxWidth = isLandscape ? 1123 : 794; // 297mm / 210mm a 96dpi
+  var zoomVal = Math.min(0.95, Math.max(0.45, (wrapWidth - 48) / pagePxWidth));
+
+  var html = rawHtml
+    .replace("{{PAGE_RULE_CSS}}", pageRuleCss)
+    .replace("{{LAYOUT_CLASS}}", layoutClasses.join(" "))
+    .replace("</style>", "body.layout-studio .a4-page { --preview-zoom: " + zoomVal.toFixed(3) + "; } </style>");
+
+  var doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  var measureStage = doc.createElement("div");
+  measureStage.className = "measure-stage";
+  measureStage.style.cssText = "position: absolute; left: -9999px; top: 0; visibility: hidden;";
+  doc.body.appendChild(measureStage);
+
+  var ruler = doc.createElement("div");
+  ruler.className = "measure-ruler";
+  measureStage.appendChild(ruler);
+  var maxSlotH = ruler.getBoundingClientRect().height - 4;
+  measureStage.removeChild(ruler);
+
+  // Obtener altura de 1 divisor para Auto (2 cols)
+  var divProbe = doc.createElement("div");
+  divProbe.className = "auto-ticket-divider";
+  measureStage.appendChild(divProbe);
+  var dividerH = 27; // ~7mm (margen sup/inf de 3.5mm + border)
+  measureStage.removeChild(divProbe);
+
+  var allBlocks = [];
+  var longWarnings = [];
+
+  printQueue.forEach(function(qItem) {
+    var data = txDetailCache[qItem.id];
+    if (!data) return;
+    var blocks = buildStudioTicketBlocks(doc, data, measureStage, maxSlotH);
+    if (blocks.length > 1 && (studioMode === "2x2" || studioMode === "3x1")) {
+      longWarnings.push("#" + blocks[0].txNumber + " (" + blocks.length + " bloques)");
+    }
+    allBlocks = allBlocks.concat(blocks);
+  });
+
+  doc.body.removeChild(measureStage);
+
+  var sheetsRoot = doc.getElementById("sheetsRoot");
+  var totalSheets = 0;
+
+  if (studioMode === "auto") {
+    // Empaquetado inteligente en 2 columnas verticales de 284mm
+    var currentSheet = null;
+    var col0, col1, col0Used = 0, col1Used = 0;
+
+    function openNewAutoSheet() {
+      var s = createStudioA4Sheet(doc, "auto");
+      col0 = doc.createElement("div"); col0.className = "auto-col";
+      col1 = doc.createElement("div"); col1.className = "auto-col";
+      s.grid.appendChild(col0);
+      s.grid.appendChild(col1);
+      sheetsRoot.appendChild(s.page);
+      currentSheet = s;
+      col0Used = 0;
+      col1Used = 0;
+      totalSheets++;
+    }
+
+    openNewAutoSheet();
+
+    allBlocks.forEach(function(blk) {
+      var needDiv0 = col0.children.length > 0 ? dividerH : 0;
+      var needDiv1 = col1.children.length > 0 ? dividerH : 0;
+
+      if (col0Used + needDiv0 + blk.height <= maxSlotH) {
+        if (needDiv0) { var d0 = doc.createElement("div"); d0.className = "auto-ticket-divider"; col0.appendChild(d0); }
+        col0.appendChild(blk.el);
+        col0Used += needDiv0 + blk.height;
+      } else if (col1Used + needDiv1 + blk.height <= maxSlotH) {
+        if (needDiv1) { var d1 = doc.createElement("div"); d1.className = "auto-ticket-divider"; col1.appendChild(d1); }
+        col1.appendChild(blk.el);
+        col1Used += needDiv1 + blk.height;
+      } else {
+        openNewAutoSheet();
+        col0.appendChild(blk.el);
+        col0Used = blk.height;
+      }
+    });
+  } else {
+    // Grilla fija: 2x1 (2), 3x1 (3), 2x2 (4)
+    var perSheet = studioMode === "2x1" ? 2 : (studioMode === "3x1" ? 3 : 4);
+    for (var idx = 0; idx < allBlocks.length; idx += perSheet) {
+      var sheetObj = createStudioA4Sheet(doc, studioMode);
+      for (var slot = 0; slot < perSheet; slot++) {
+        var blk = allBlocks[idx + slot];
+        if (blk) {
+          sheetObj.grid.appendChild(blk.el);
+        } else {
+          sheetObj.grid.appendChild(doc.createElement("div"));
+        }
+      }
+      sheetsRoot.appendChild(sheetObj.page);
+      totalSheets++;
+    }
+  }
+
+  summaryLbl.textContent = totalSheets + (totalSheets === 1 ? " hoja A4" : " hojas A4") + " · " + printQueue.length + (printQueue.length === 1 ? " comprobante" : " comprobantes");
+
+  if (longWarnings.length > 0) {
+    warnBanner.innerHTML = "<span>⚠️</span> <span>Comprobantes extensos divididos en modo <strong>" + studioMode.toUpperCase() + "</strong>: " + longWarnings.join(", ") + ". Sugerencia: cambia a <strong>Auto (2 cols)</strong> o <strong>2×1</strong>, o quítalos desde el panel izquierdo.</span>";
+    warnBanner.classList.remove("hidden");
+  } else {
+    warnBanner.classList.add("hidden");
+  }
+}
+
+function renderStudioQueuePanel() {
+  var list = document.getElementById("studioQueueList");
+  document.getElementById("studioQueueCountBadge").textContent = printQueue.length;
+  list.innerHTML = "";
+
+  printQueue.forEach(function(item, idx) {
+    var row = document.createElement("div");
+    row.className = "bg-white border border-slate-200 rounded-xl p-2 flex items-center justify-between gap-2 text-xs shadow-2xs";
+    var cached = txDetailCache[item.id];
+    var itemCount = cached && cached.products ? cached.products.length : "?";
+
+    row.innerHTML =
+      '<div class="min-w-0 flex-1">' +
+        '<div class="font-bold text-slate-800 truncate"><span class="text-indigo-600 font-mono">#' + escapeHtml(item.number) + '</span> · ' + escapeHtml(item.client) + '</div>' +
+        '<div class="text-[10px] text-slate-400">' + itemCount + ' ítems · ' + currencyFormatter.format(item.value || 0) + '</div>' +
+      '</div>' +
+      '<div class="flex items-center gap-0.5 flex-shrink-0">' +
+        '<button type="button" class="btn-q-up px-1.5 py-0.5 rounded hover:bg-slate-100 text-slate-500 font-bold disabled:opacity-25" ' + (idx === 0 ? 'disabled' : '') + ' title="Subir">↑</button>' +
+        '<button type="button" class="btn-q-down px-1.5 py-0.5 rounded hover:bg-slate-100 text-slate-500 font-bold disabled:opacity-25" ' + (idx === printQueue.length - 1 ? 'disabled' : '') + ' title="Bajar">↓</button>' +
+        '<button type="button" class="btn-q-del px-1.5 py-0.5 rounded hover:bg-rose-50 text-rose-500 font-bold" title="Quitar">✕</button>' +
+      '</div>';
+
+    row.querySelector(".btn-q-up").onclick = function() {
+      var tmp = printQueue[idx - 1];
+      printQueue[idx - 1] = printQueue[idx];
+      printQueue[idx] = tmp;
+      renderStudioQueuePanel();
+      renderPrintStudioPreview();
+    };
+    row.querySelector(".btn-q-down").onclick = function() {
+      var tmp = printQueue[idx + 1];
+      printQueue[idx + 1] = printQueue[idx];
+      printQueue[idx] = tmp;
+      renderStudioQueuePanel();
+      renderPrintStudioPreview();
+    };
+    row.querySelector(".btn-q-del").onclick = function() {
+      removeFromPrintQueue(item.id);
+      renderStudioQueuePanel();
+      renderPrintStudioPreview();
+    };
+
+    list.appendChild(row);
+  });
+}
+
+function syncStudioModeButtons() {
+  document.querySelectorAll(".btn-studio-mode").forEach(function(btn) {
+    if (btn.dataset.mode === studioMode) {
+      btn.className = "btn-studio-mode px-2.5 py-1 rounded-lg font-bold bg-white text-indigo-600 shadow-sm transition";
+    } else {
+      btn.className = "btn-studio-mode px-2.5 py-1 rounded-lg font-semibold text-slate-600 hover:text-slate-900 transition";
+    }
+  });
+}
+
+document.getElementById("btnOpenPrintStudio").onclick = async function() {
+  if (printQueue.length === 0) return;
+  document.body.classList.add("overflow-hidden");
+  document.getElementById("modalPrintStudio").classList.remove("hidden");
+  syncStudioModeButtons();
+
+  var overlay = document.getElementById("studioLoadingOverlay");
+  var msg = document.getElementById("studioLoadingMsg");
+  overlay.classList.remove("hidden");
+
+  try {
+    await ensureQueueDetailsLoaded(function(done, total) {
+      msg.textContent = "Descargando comprobantes (" + done + " de " + total + ")...";
+    });
+    renderStudioQueuePanel();
+    await renderPrintStudioPreview();
+  } finally {
+    overlay.classList.add("hidden");
+  }
+};
+
+document.querySelectorAll(".btn-studio-mode").forEach(function(btn) {
+  btn.onclick = function() {
+    studioMode = btn.dataset.mode;
+    syncStudioModeButtons();
+    renderPrintStudioPreview();
+  };
+});
+
+document.getElementById("chkStudioCutLines").onchange = function(e) {
+  studioShowCutLines = e.target.checked;
+  var doc = document.getElementById("printPreviewFrame").contentWindow.document;
+  if (doc && doc.body) {
+    if (studioShowCutLines) doc.body.classList.remove("no-cut-lines");
+    else doc.body.classList.add("no-cut-lines");
+  }
+};
+
+document.getElementById("btnStudioPrintNow").onclick = async function() {
+  var frame = document.getElementById("printPreviewFrame");
+  var doc = frame.contentWindow.document;
+  var imgs = Array.prototype.slice.call(doc.querySelectorAll("#sheetsRoot img"));
+  await Promise.all(imgs.map(function(img) {
+    if (img.complete) return Promise.resolve();
+    return new Promise(function(resolve) { img.onload = resolve; img.onerror = resolve; });
+  }));
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+};
+
+function closePrintStudio() {
+  document.getElementById("modalPrintStudio").classList.add("hidden");
+  document.body.classList.remove("overflow-hidden");
+}
+
+document.getElementById("btnClosePrintStudio").onclick = closePrintStudio;
+document.getElementById("modalPrintStudio").onclick = function(e) {
+  if (!document.getElementById("modalPrintStudioCard").contains(e.target)) closePrintStudio();
+};
 
 
 // Activar delegación del hover de zoom en ambas tablas
