@@ -1757,11 +1757,197 @@ document.addEventListener("keydown", function(e) {
 });
 
 // ==================== MOTOR DE IMPRESIÓN DESACOPLADO ====================
-var currentTxDetailData = null;
+function escapeHtml(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildProductNode(doc, isFull, prod, index) {
+  var cant = prod.amount || 1;
+  var price = prod.price || 0;
+  var lineTot = cant * price;
+  var safeName = escapeHtml(prod.name || "Artículo");
+
+  if (isFull) {
+    var tr = doc.createElement("tr");
+    tr.innerHTML =
+      '<td style="text-align: center; color: #64748b;">' + (index + 1) + '</td>' +
+      '<td style="font-weight: bold; color: #1e293b;">' + safeName + '</td>' +
+      '<td style="text-align: center; font-weight: bold;">' + cant + '</td>' +
+      '<td style="text-align: right;">' + currencyFormatter.format(price) + '</td>' +
+      '<td style="text-align: right; font-weight: bold;">' + currencyFormatter.format(lineTot) + '</td>';
+    return tr;
+  }
+
+  var row = doc.createElement("div");
+  row.className = "half-item-row";
+  row.innerHTML =
+    '<div class="half-item-top">' +
+      '<span class="half-item-name">' + safeName + '</span>' +
+      '<span class="half-item-total">' + currencyFormatter.format(lineTot) + '</span>' +
+    '</div>' +
+    '<div class="half-item-sub">' + cant + ' Unid. × ' + currencyFormatter.format(price) + '</div>';
+  return row;
+}
+
+function paginateAndRenderReceipt(doc, isFull, products) {
+  var sheetsRoot = doc.getElementById("sheetsRoot");
+  var prefix = isFull ? "tplFull" : "tplHalf";
+
+  var tplHeader = doc.getElementById(prefix + "Header");
+  var tplContHeader = doc.getElementById(prefix + "ContHeader");
+  var tplItemsWrap = doc.getElementById(isFull ? "tplFullTableWrap" : "tplHalfItemsWrap");
+  var tplFooter = doc.getElementById(prefix + "Footer");
+
+  // Escenario de medición invisible con el ancho útil exacto de la página
+  var measureStage = doc.createElement("div");
+  measureStage.className = "measure-stage";
+  measureStage.style.cssText = "position: absolute; left: -9999px; top: 0; visibility: hidden;";
+  doc.body.appendChild(measureStage);
+
+  // Medir alto máximo útil en px usando la regla CSS en mm
+  var ruler = doc.createElement("div");
+  ruler.className = "measure-ruler";
+  measureStage.appendChild(ruler);
+  var maxPageHeight = ruler.getBoundingClientRect().height - 8; // 8px de holgura
+  measureStage.removeChild(ruler);
+
+  function measureNode(node) {
+    measureStage.appendChild(node);
+    var h = node.getBoundingClientRect().height;
+    measureStage.removeChild(node);
+    return h;
+  }
+
+  // Medimos cabeceras con el badge visible para contemplar su espacio si hubiera > 1 pág
+  var headerNode = tplHeader.content.firstElementChild.cloneNode(true);
+  var badgeH1 = headerNode.querySelector(".page-indicator");
+  if (badgeH1) { badgeH1.classList.remove("hidden"); badgeH1.textContent = "Pág. 1 de 9"; }
+  var hHeaderFull = measureNode(headerNode);
+
+  var contHeaderNode = tplContHeader.content.firstElementChild.cloneNode(true);
+  var badgeH2 = contHeaderNode.querySelector(".page-indicator");
+  if (badgeH2) { badgeH2.classList.remove("hidden"); badgeH2.textContent = "Pág. 2 de 9"; }
+  var hHeaderCont = measureNode(contHeaderNode);
+
+  var wrapProbe = tplItemsWrap.content.firstElementChild.cloneNode(true);
+  var hItemsHead = measureNode(wrapProbe);
+
+  var footerProbe = tplFooter.content.firstElementChild.cloneNode(true);
+  var hFooter = measureNode(footerProbe);
+
+  // Medimos cada fila de producto en su contenedor real para capturar saltos de línea
+  var rowsWrap = tplItemsWrap.content.firstElementChild.cloneNode(true);
+  var rowsTarget = rowsWrap.querySelector(".items-target");
+  var rowNodes = products.map(function(prod, idx) {
+    var node = buildProductNode(doc, isFull, prod, idx);
+    rowsTarget.appendChild(node);
+    return node;
+  });
+  measureStage.appendChild(rowsWrap);
+  var rowHeights = rowNodes.map(function(node) {
+    return node.getBoundingClientRect().height;
+  });
+  measureStage.removeChild(rowsWrap);
+
+  // Reparto greedy en páginas
+  var pages = [];
+  var currentItems = [];
+  var currentUsed = hHeaderFull + hItemsHead;
+
+  for (var i = 0; i < products.length; i++) {
+    var hRow = rowHeights[i];
+    if (currentUsed + hRow > maxPageHeight && currentItems.length > 0) {
+      pages.push({ items: currentItems, usedHeight: currentUsed });
+      currentItems = [];
+      currentUsed = hHeaderCont + hItemsHead;
+    }
+    currentItems.push(i);
+    currentUsed += hRow;
+  }
+
+  if (currentItems.length > 0 || pages.length === 0) {
+    pages.push({ items: currentItems, usedHeight: currentUsed });
+  }
+
+  // Validar que el footer entre en la última página; si no entra, mover últimos ítems
+  var footerReserve = hFooter + 10;
+  var lastPage = pages[pages.length - 1];
+  if (lastPage.usedHeight + footerReserve > maxPageHeight) {
+    var movedItems = [];
+    while (lastPage.items.length > 1 && lastPage.usedHeight + footerReserve > maxPageHeight) {
+      var poppedIdx = lastPage.items.pop();
+      lastPage.usedHeight -= rowHeights[poppedIdx];
+      movedItems.unshift(poppedIdx);
+    }
+
+    if (movedItems.length > 0) {
+      var nextUsed = hHeaderCont + hItemsHead + movedItems.reduce(function(acc, idx) {
+        return acc + rowHeights[idx];
+      }, 0);
+      pages.push({ items: movedItems, usedHeight: nextUsed });
+    } else {
+      // Caso extremo: 1 solo ítem gigante + footer exceden la hoja -> hoja final para totales
+      pages.push({ items: [], usedHeight: hHeaderCont });
+    }
+  }
+
+  doc.body.removeChild(measureStage);
+
+  // Renderizado final de cada hoja
+  var totalPages = pages.length;
+  pages.forEach(function(pageData, pIdx) {
+    var sheet = doc.createElement("div");
+    sheet.className = "sheet";
+
+    var sheetBody = doc.createElement("div");
+    sheetBody.className = "sheet-body";
+
+    var hdr = (pIdx === 0 ? tplHeader : tplContHeader).content.firstElementChild.cloneNode(true);
+    if (totalPages > 1) {
+      var badge = hdr.querySelector(".page-indicator");
+      if (badge) {
+        badge.textContent = "Pág. " + (pIdx + 1) + " de " + totalPages;
+        badge.classList.remove("hidden");
+      }
+    }
+    sheetBody.appendChild(hdr);
+
+    if (pageData.items.length > 0) {
+      var itemsWrap = tplItemsWrap.content.firstElementChild.cloneNode(true);
+      var target = itemsWrap.querySelector(".items-target");
+      pageData.items.forEach(function(prodIdx) {
+        target.appendChild(buildProductNode(doc, isFull, products[prodIdx], prodIdx));
+      });
+      sheetBody.appendChild(itemsWrap);
+    }
+
+    var sheetFooter = doc.createElement("div");
+    sheetFooter.className = "sheet-footer";
+
+    if (pIdx === totalPages - 1) {
+      sheetFooter.appendChild(tplFooter.content.firstElementChild.cloneNode(true));
+    } else {
+      var notice = doc.createElement("div");
+      notice.className = "cont-notice";
+      notice.textContent = "Continúa en página " + (pIdx + 2) + " de " + totalPages + " →";
+      sheetFooter.appendChild(notice);
+    }
+
+    sheet.appendChild(sheetBody);
+    sheet.appendChild(sheetFooter);
+    sheetsRoot.appendChild(sheet);
+  });
+}
 
 async function printReceipt(layoutType) {
   if (!currentTxDetailData) return;
 
+  var isFull = layoutType === "a4-full";
   var data = currentTxDetailData;
   var tx = data.transaction || {};
   var totals = data.totals || {};
@@ -1769,9 +1955,13 @@ async function printReceipt(layoutType) {
   var contact = tx.contact || {};
   var user = tx.user || {};
 
-  var clientName = contact.name || "Consumidor Final";
-  var txNumber = tx.transactionCount || tx.id.slice(0, 8);
-  var empName = employeesMap[tx.userId] || employeesMap[user.id] || "Vendedor Millenial";
+  var clientName = escapeHtml(contact.name || "Consumidor Final");
+  var txNumber = escapeHtml(tx.transactionCount || tx.id.slice(0, 8));
+  var rawEmpName = employeesMap[tx.userId] || employeesMap[user.id] || "";
+  if (!rawEmpName && (user.firstName || user.lastName)) {
+    rawEmpName = (user.firstName + " " + (user.lastName || "")).trim();
+  }
+  var empName = escapeHtml(rawEmpName || "Vendedor Millenial");
   var logoUrl = "https://arielfmdp.github.io/treinta-dashboard/LOGO.png";
 
   var dMs = Number(tx.date) || (tx.createdAt ? new Date(tx.createdAt).getTime() : Date.now());
@@ -1783,7 +1973,6 @@ async function printReceipt(layoutType) {
   var discountNum = totals.totalDiscount || 0;
   var totalVal = currencyFormatter.format(totals.total || tx.value || 0);
 
-  // --- VARIABLES CONTABLES CALCULADAS (ESTADO Y SALDOS) ---
   var totalPaidNum = data._totalPaid !== undefined ? data._totalPaid : (totals.total || tx.value || 0);
   var totalPaidVal = currencyFormatter.format(totalPaidNum);
 
@@ -1791,83 +1980,56 @@ async function printReceipt(layoutType) {
   var statusLabel = isPaid ? "Pagada" : "Pendiente";
   var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
 
-  // Variables para la tabla horizontal A4
   var discountValStr = discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0";
   var balanceDueStr = currencyFormatter.format(balanceDue);
   var balanceDueStyle = balanceDue > 1 ? "color: #e11d48; font-weight: 900;" : "color: #059669;";
 
-  // Bloque para Media A4 (mantiene su formato vertical)
   var saldoFilaHalf = balanceDue > 1
     ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
     : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>';
-    
-  // Armar las filas de productos
-  var rowsFull = "";
-  var rowsHalf = "";
-  products.forEach(function(p, i) {
-    var cant = p.amount || 1;
-    var price = p.price || 0;
-    var lineTot = cant * price;
 
-    // Fila A4 Completa
-    rowsFull += '<tr>' +
-                  '<td style="text-align: center; color: #64748b;">' + (i + 1) + '</td>' +
-                  '<td style="font-weight: bold; color: #1e293b;">' + (p.name || "Artículo") + '</td>' +
-                  '<td style="text-align: center; font-weight: bold;">' + cant + '</td>' +
-                  '<td style="text-align: right;">' + currencyFormatter.format(price) + '</td>' +
-                  '<td style="text-align: right; font-weight: bold;">' + currencyFormatter.format(lineTot) + '</td>' +
-                '</tr>';
-
-    // Fila Media A4 Compacta
-    rowsHalf += '<div style="padding: 4px 0; border-bottom: 1px dashed #e2e8f0; font-size: 10px;">' +
-                  '<div style="display: flex; justify-content: space-between; font-weight: bold; color: #1e293b;">' +
-                    '<span style="max-width: 65mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + (p.name || "Artículo") + '</span>' +
-                    '<span>' + currencyFormatter.format(lineTot) + '</span>' +
-                  '</div>' +
-                  '<div style="color: #64748b; font-size: 9px;">' + cant + ' Unid. × ' + currencyFormatter.format(price) + '</div>' +
-                '</div>';
-  });
-
-  // Bloques condicionales de descuento
-  var descBlockFull = discountNum > 0
-    ? '<tr><td style="color: #e11d48;">Descuento:</td><td style="text-align: right; font-weight: bold; color: #e11d48;">-' + currencyFormatter.format(discountNum) + '</td></tr>'
-    : '';
   var descBlockHalf = discountNum > 0
     ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
     : '';
 
+  var pageRuleCss = isFull
+    ? "@page { size: A4 portrait; margin: 12mm 15mm; }"
+    : "@page { size: 105mm 297mm; margin: 7mm 6mm; }";
+
   try {
-    // 1. Descargar la plantilla HTML desacoplada
     var tRes = await fetch("https://arielfmdp.github.io/treinta-dashboard/comprobante.html?v=" + Date.now());
     if (!tRes.ok) throw new Error("No se pudo cargar comprobante.html");
     var html = await tRes.text();
 
-    // 2. Rellenar los marcadores
-    html = html.replace("{{LAYOUT_CLASS}}", layoutType === "a4-full" ? "layout-full" : "layout-half")
-               .replace(/{{LOGO_URL}}/g, logoUrl)
-               .replace(/{{TX_NUMBER}}/g, txNumber)
-               .replace(/{{CLIENTE}}/g, clientName)
-               .replace(/{{FECHA_HORA}}/g, dateStr)
-               .replace(/{{VENDEDOR}}/g, empName)
-               .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"))
-               .replace(/{{ESTADO_LABEL}}/g, statusLabel)
-               .replace("{{FILAS_PRODUCTOS_FULL}}", rowsFull)
-               .replace("{{FILAS_PRODUCTOS_HALF}}", rowsHalf)
-               .replace(/{{SUBTOTAL}}/g, subtotalVal)
-               .replace("{{DESCUENTO_VAL}}", discountValStr) // 👈 Valor horizontal A4
-               .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
-               .replace(/{{TOTAL}}/g, totalVal)
-               .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
-               .replace("{{SALDO_PENDIENTE_VAL}}", balanceDueStr) // 👈 Valor horizontal A4
-               .replace("{{ESTILO_PENDIENTE}}", balanceDueStyle)
-               .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
-               .replace("{{TOTAL_ITEMS}}", products.length);
+    html = html
+      .replace("{{PAGE_RULE_CSS}}", pageRuleCss)
+      .replace("{{LAYOUT_CLASS}}", isFull ? "layout-full" : "layout-half")
+      .replace(/{{LOGO_URL}}/g, logoUrl)
+      .replace(/{{TX_NUMBER}}/g, txNumber)
+      .replace(/{{CLIENTE}}/g, clientName)
+      .replace(/{{FECHA_HORA}}/g, dateStr)
+      .replace(/{{VENDEDOR}}/g, empName)
+      .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"))
+      .replace(/{{ESTADO_LABEL}}/g, statusLabel)
+      .replace(/{{SUBTOTAL}}/g, subtotalVal)
+      .replace(/{{DESCUENTO_VAL}}/g, discountValStr)
+      .replace(/{{DESCUENTO_BLOQUE_HALF}}/g, descBlockHalf)
+      .replace(/{{TOTAL}}/g, totalVal)
+      .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
+      .replace(/{{SALDO_PENDIENTE_VAL}}/g, balanceDueStr)
+      .replace(/{{ESTILO_PENDIENTE}}/g, balanceDueStyle)
+      .replace(/{{SALDO_PENDIENTE_FILA_HALF}}/g, saldoFilaHalf)
+      .replace(/{{TOTAL_ITEMS}}/g, products.length);
 
-    // 3. Crear iframe de impresión
+    // El iframe debe tener exactamente el ancho físico de página para medir correctamente
     var pFrame = document.createElement("iframe");
     pFrame.style.position = "fixed";
-    pFrame.style.top = "-9999px";
     pFrame.style.left = "-9999px";
+    pFrame.style.top = "0";
+    pFrame.style.width = isFull ? "210mm" : "105mm";
+    pFrame.style.height = "297mm";
+    pFrame.style.border = "none";
+    pFrame.style.visibility = "hidden";
     document.body.appendChild(pFrame);
 
     var pDoc = pFrame.contentWindow.document;
@@ -1875,31 +2037,34 @@ async function printReceipt(layoutType) {
     pDoc.write(html);
     pDoc.close();
 
-    // 4. Esperar que el logo termine de cargar antes de imprimir
-    var targetImgId = layoutType === "a4-full" ? "receiptLogoImgFull" : "receiptLogoImgHalf";
-    var imgEl = pDoc.getElementById(targetImgId);
+    // Medir alturas reales y distribuir en páginas antes de imprimir
+    paginateAndRenderReceipt(pDoc, isFull, products);
 
-    function startPrint() {
+    // Esperar a que carguen las imágenes renderizadas (logo en pág 1)
+    var imgs = Array.prototype.slice.call(pDoc.querySelectorAll("#sheetsRoot img"));
+    await Promise.all(imgs.map(function(img) {
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(resolve) {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
+
+    setTimeout(function() {
       pFrame.contentWindow.focus();
       pFrame.contentWindow.print();
       setTimeout(function() { pFrame.remove(); }, 1500);
-    }
-
-    if (imgEl && !imgEl.complete) {
-      imgEl.onload = startPrint;
-      imgEl.onerror = startPrint;
-    } else {
-      setTimeout(startPrint, 150);
-    }
+    }, 100);
 
   } catch (err) {
     alert("Error al generar comprobante: " + err.message);
   }
 }
 
-
 document.getElementById("btnPrintA4Full").onclick = function() { printReceipt("a4-full"); };
 document.getElementById("btnPrintA4Half").onclick = function() { printReceipt("a4-half"); };
+
+
 // Activar delegación del hover de zoom en ambas tablas
 attachHoverPreviewEvents("productsGlobalTableBody");
 attachHoverPreviewEvents("inventoryTableBody");
