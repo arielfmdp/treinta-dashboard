@@ -1138,6 +1138,9 @@ var printQueue = [];    // [{ id, number, client, value }]
 var studioMode = "auto"; // "auto" | "2x1" | "3x1" | "2x2"
 var studioShowCutLines = true;
 var comprobanteRawCache = null;
+var studioDragSrcIdx = null;
+var studioCurrentViewPage = 1;
+var studioTotalPages = 1;
 
 // Elementos del popup
 var btnTxDatePickerTrigger = document.getElementById("btnTxDatePickerTrigger");
@@ -2284,7 +2287,7 @@ async function getComprobanteTemplate() {
   return comprobanteRawCache;
 }
 
-function buildCompactDataMap(data) {
+function buildReceiptDataMap(data) {
   var tx = data.transaction || {};
   var totals = data.totals || {};
   var products = data.products || [];
@@ -2314,11 +2317,14 @@ function buildCompactDataMap(data) {
     paymentLabel: tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"),
     statusLabel: (data._isPaid !== undefined ? data._isPaid : true) ? "Pagada" : "Pendiente",
     subtotalVal: currencyFormatter.format(totals.subtotal || totals.total || tx.value || 0),
+    discountValStr: discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0",
     descBlockHalf: discountNum > 0
       ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
       : '',
     totalVal: currencyFormatter.format(totals.total || tx.value || 0),
     totalPaidVal: currencyFormatter.format(totalPaidNum),
+    balanceDueStr: currencyFormatter.format(balanceDue),
+    balanceDueStyle: balanceDue > 1 ? "color: #e11d48; font-weight: 900;" : "color: #059669;",
     saldoFilaHalf: balanceDue > 1
       ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
       : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>',
@@ -2337,16 +2343,147 @@ function hydrateTplHtml(tplEl, map) {
     .replace(/{{MEDIO_PAGO}}/g, map.paymentLabel)
     .replace(/{{ESTADO_LABEL}}/g, map.statusLabel)
     .replace(/{{SUBTOTAL}}/g, map.subtotalVal)
+    .replace("{{DESCUENTO_VAL}}", map.discountValStr)
     .replace("{{DESCUENTO_BLOQUE_HALF}}", map.descBlockHalf)
     .replace(/{{TOTAL}}/g, map.totalVal)
     .replace(/{{TOTAL_ABONADO}}/g, map.totalPaidVal)
+    .replace("{{SALDO_PENDIENTE_VAL}}", map.balanceDueStr)
+    .replace("{{ESTILO_PENDIENTE}}", map.balanceDueStyle)
     .replace("{{SALDO_PENDIENTE_FILA_HALF}}", map.saldoFilaHalf)
     .replace(/{{TOTAL_ITEMS}}/g, map.totalItems);
   return wrapper.firstElementChild;
 }
 
+// Genera hojas A4 Completa individuales dentro del Print Studio
+function buildStudioFullPages(doc, data, measureStage, maxPageHeight) {
+  var map = buildReceiptDataMap(data);
+  var products = data.products || [];
+
+  var tplHeader = doc.getElementById("tplFullHeader");
+  var tplContHeader = doc.getElementById("tplFullContHeader");
+  var tplTableWrap = doc.getElementById("tplFullTableWrap");
+  var tplFooter = doc.getElementById("tplFullFooter");
+
+  function measure(el) {
+    measureStage.appendChild(el);
+    var h = el.getBoundingClientRect().height;
+    measureStage.removeChild(el);
+    return h;
+  }
+
+  var hProbe = hydrateTplHtml(tplHeader, map);
+  var b1 = hProbe.querySelector(".page-indicator");
+  if (b1) { b1.classList.remove("hidden"); b1.textContent = "Pág. 1 de 9"; }
+  var hHeader = measure(hProbe);
+
+  var hcProbe = hydrateTplHtml(tplContHeader, map);
+  var b2 = hcProbe.querySelector(".page-indicator");
+  if (b2) { b2.classList.remove("hidden"); b2.textContent = "Pág. 2 de 9"; }
+  var hContHeader = measure(hcProbe);
+
+  var hItemsHead = measure(hydrateTplHtml(tplTableWrap, map));
+  var hFooter = measure(hydrateTplHtml(tplFooter, map));
+
+  var rowsBox = hydrateTplHtml(tplTableWrap, map);
+  var rowsTarget = rowsBox.querySelector(".items-target");
+  var rowNodes = products.map(function(p, idx) {
+    var node = buildProductNode(doc, true, p, idx);
+    rowsTarget.appendChild(node);
+    return node;
+  });
+  measureStage.appendChild(rowsBox);
+  var rowHeights = rowNodes.map(function(n) { return n.getBoundingClientRect().height; });
+  measureStage.removeChild(rowsBox);
+
+  var pages = [];
+  var curItems = [];
+  var curUsed = hHeader + hItemsHead;
+
+  for (var i = 0; i < products.length; i++) {
+    var rh = rowHeights[i];
+    if (curUsed + rh > maxPageHeight && curItems.length > 0) {
+      pages.push({ items: curItems, used: curUsed });
+      curItems = [];
+      curUsed = hContHeader + hItemsHead;
+    }
+    curItems.push(i);
+    curUsed += rh;
+  }
+  if (curItems.length > 0 || pages.length === 0) {
+    pages.push({ items: curItems, used: curUsed });
+  }
+
+  var footerReserve = hFooter + 10;
+  var last = pages[pages.length - 1];
+  if (last.used + footerReserve > maxPageHeight) {
+    var moved = [];
+    while (last.items.length > 1 && last.used + footerReserve > maxPageHeight) {
+      var popIdx = last.items.pop();
+      last.used -= rowHeights[popIdx];
+      moved.unshift(popIdx);
+    }
+    if (moved.length > 0) {
+      var nextUsed = hContHeader + hItemsHead + moved.reduce(function(a, idx) { return a + rowHeights[idx]; }, 0);
+      pages.push({ items: moved, used: nextUsed });
+    } else {
+      pages.push({ items: [], used: hContHeader });
+    }
+  }
+
+  var totalPages = pages.length;
+  var a4Pages = [];
+
+  pages.forEach(function(pData, pIdx) {
+    var a4Page = doc.createElement("div");
+    a4Page.className = "a4-page";
+
+    var sheet = doc.createElement("div");
+    sheet.className = "sheet-full-studio";
+
+    var sheetBody = doc.createElement("div");
+    sheetBody.className = "sheet-body";
+
+    var hdr = hydrateTplHtml(pIdx === 0 ? tplHeader : tplContHeader, map);
+    if (totalPages > 1) {
+      var badge = hdr.querySelector(".page-indicator");
+      if (badge) {
+        badge.textContent = "Pág. " + (pIdx + 1) + " de " + totalPages;
+        badge.classList.remove("hidden");
+      }
+    }
+    sheetBody.appendChild(hdr);
+
+    if (pData.items.length > 0) {
+      var wrap = hydrateTplHtml(tplTableWrap, map);
+      var tgt = wrap.querySelector(".items-target");
+      pData.items.forEach(function(prodIdx) {
+        tgt.appendChild(buildProductNode(doc, true, products[prodIdx], prodIdx));
+      });
+      sheetBody.appendChild(wrap);
+    }
+
+    var sheetFooter = doc.createElement("div");
+    sheetFooter.className = "sheet-footer";
+    if (pIdx === totalPages - 1) {
+      sheetFooter.appendChild(hydrateTplHtml(tplFooter, map));
+    } else {
+      var notice = doc.createElement("div");
+      notice.className = "cont-notice";
+      notice.textContent = "Continúa en página " + (pIdx + 2) + " de " + totalPages + " →";
+      sheetFooter.appendChild(notice);
+    }
+
+    sheet.appendChild(sheetBody);
+    sheet.appendChild(sheetFooter);
+    a4Page.appendChild(sheet);
+    a4Pages.push(a4Page);
+  });
+
+  return a4Pages;
+}
+
 function buildStudioTicketBlocks(doc, data, measureStage, maxSlotH) {
-  var map = buildCompactDataMap(data);
+  var map = buildReceiptDataMap(data);
   var products = data.products || [];
 
   var tplHeader = doc.getElementById("tplHalfHeader");
@@ -2385,7 +2522,6 @@ function buildStudioTicketBlocks(doc, data, measureStage, maxSlotH) {
   var rowHeights = rowNodes.map(function(n) { return n.getBoundingClientRect().height; });
   measureStage.removeChild(rowsBox);
 
-  // Dividir comprobante en bloques si excede maxSlotH
   var pages = [];
   var curItems = [];
   var curUsed = hHeader + hItemsHead;
@@ -2475,7 +2611,6 @@ function createStudioA4Sheet(doc, mode) {
   var grid = doc.createElement("div");
   grid.className = "studio-grid studio-grid-" + mode;
 
-  // Agregar líneas de corte según geometría del modo
   if (mode === "auto" || mode === "2x1") {
     var vLine = doc.createElement("div");
     vLine.className = "cut-line-v";
@@ -2505,16 +2640,63 @@ function createStudioA4Sheet(doc, mode) {
   return { page: page, grid: grid };
 }
 
+function syncStudioPageNav(total) {
+  studioTotalPages = total || 1;
+  var nav = document.getElementById("studioPageNavBar");
+  var lbl = document.getElementById("lblStudioPageIndicator");
+  var btnPrev = document.getElementById("btnStudioPrevPage");
+  var btnNext = document.getElementById("btnStudioNextPage");
+
+  if (studioTotalPages <= 1) {
+    nav.classList.add("hidden");
+    return;
+  }
+
+  nav.classList.remove("hidden");
+  if (studioCurrentViewPage < 1) studioCurrentViewPage = 1;
+  if (studioCurrentViewPage > studioTotalPages) studioCurrentViewPage = studioTotalPages;
+  lbl.textContent = "Hoja " + studioCurrentViewPage + " / " + studioTotalPages;
+  btnPrev.disabled = studioCurrentViewPage <= 1;
+  btnNext.disabled = studioCurrentViewPage >= studioTotalPages;
+}
+
+function scrollStudioToPage(pageNum) {
+  var frame = document.getElementById("printPreviewFrame");
+  var doc = frame.contentWindow.document;
+  var pages = doc.querySelectorAll(".a4-page");
+  if (!pages.length || pageNum < 1 || pageNum > pages.length) return;
+
+  studioCurrentViewPage = pageNum;
+  syncStudioPageNav(pages.length);
+
+  var target = pages[pageNum - 1];
+  var rect = target.getBoundingClientRect();
+  frame.contentWindow.scrollTo({
+    top: rect.top + frame.contentWindow.scrollY - 16,
+    behavior: "smooth"
+  });
+}
+
+document.getElementById("btnStudioPrevPage").onclick = function() {
+  scrollStudioToPage(studioCurrentViewPage - 1);
+};
+document.getElementById("btnStudioNextPage").onclick = function() {
+  scrollStudioToPage(studioCurrentViewPage + 1);
+};
+
 async function renderPrintStudioPreview() {
   var frame = document.getElementById("printPreviewFrame");
   var summaryLbl = document.getElementById("studioSummaryLbl");
   var warnBanner = document.getElementById("studioWarningsBanner");
   var btnPrint = document.getElementById("btnStudioPrintNow");
+  var chkCut = document.getElementById("chkStudioCutLines");
+  var lblCut = document.getElementById("lblStudioCutLines");
 
   if (printQueue.length === 0) {
     summaryLbl.textContent = "Cola vacía";
     warnBanner.classList.add("hidden");
     btnPrint.disabled = true;
+    syncStudioPageNav(0);
     var emptyDoc = frame.contentWindow.document;
     emptyDoc.open();
     emptyDoc.write("<!DOCTYPE html><html><body style='background:#334155;color:#cbd5e1;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;'>Agrega comprobantes a la cola para previsualizar.</body></html>");
@@ -2523,24 +2705,34 @@ async function renderPrintStudioPreview() {
   }
 
   btnPrint.disabled = false;
+  var isFullMode = studioMode === "full";
+  chkCut.disabled = isFullMode;
+  lblCut.classList.toggle("opacity-40", isFullMode);
+
   var rawHtml = await getComprobanteTemplate();
 
   var isLandscape = studioMode === "3x1";
-  var pageRuleCss = isLandscape
-    ? "@page { size: A4 landscape; margin: 6mm; }"
-    : "@page { size: A4 portrait; margin: 6mm; }";
+  var pageRuleCss = isFullMode
+    ? "@page { size: A4 portrait; margin: 12mm 15mm; }"
+    : (isLandscape
+        ? "@page { size: A4 landscape; margin: 6mm; }"
+        : "@page { size: A4 portrait; margin: 6mm; }");
 
   var layoutClasses = [
     "layout-studio",
-    isLandscape ? "studio-landscape" : "studio-portrait",
-    isLandscape ? "studio-w91" : "studio-w96",
-    studioMode === "2x2" ? "studio-h137 studio-mode-2x2" : (isLandscape ? "studio-h197" : "studio-h284")
+    isLandscape ? "studio-landscape" : "studio-portrait"
   ];
-  if (!studioShowCutLines) layoutClasses.push("no-cut-lines");
 
-  // Zoom óptimo para encajar el ancho de A4 dentro del contenedor visible
+  if (isFullMode) {
+    layoutClasses.push("studio-mode-full");
+  } else {
+    layoutClasses.push(isLandscape ? "studio-w91" : "studio-w96");
+    layoutClasses.push(studioMode === "2x2" ? "studio-h137 studio-mode-2x2" : (isLandscape ? "studio-h197" : "studio-h284"));
+    if (!studioShowCutLines) layoutClasses.push("no-cut-lines");
+  }
+
   var wrapWidth = document.getElementById("studioCanvasWrap").clientWidth || 760;
-  var pagePxWidth = isLandscape ? 1123 : 794; // 297mm / 210mm a 96dpi
+  var pagePxWidth = isLandscape ? 1123 : 794;
   var zoomVal = Math.min(0.95, Math.max(0.45, (wrapWidth - 48) / pagePxWidth));
 
   var html = rawHtml
@@ -2563,94 +2755,116 @@ async function renderPrintStudioPreview() {
   var ruler = doc.createElement("div");
   ruler.className = "measure-ruler";
   measureStage.appendChild(ruler);
-  var maxSlotH = ruler.getBoundingClientRect().height - 4;
+  var maxSlotH = ruler.getBoundingClientRect().height - (isFullMode ? 8 : 4);
   measureStage.removeChild(ruler);
-
-  // Obtener altura de 1 divisor para Auto (2 cols)
-  var divProbe = doc.createElement("div");
-  divProbe.className = "auto-ticket-divider";
-  measureStage.appendChild(divProbe);
-  var dividerH = 27; // ~7mm (margen sup/inf de 3.5mm + border)
-  measureStage.removeChild(divProbe);
-
-  var allBlocks = [];
-  var longWarnings = [];
-
-  printQueue.forEach(function(qItem) {
-    var data = txDetailCache[qItem.id];
-    if (!data) return;
-    var blocks = buildStudioTicketBlocks(doc, data, measureStage, maxSlotH);
-    if (blocks.length > 1 && (studioMode === "2x2" || studioMode === "3x1")) {
-      longWarnings.push("#" + blocks[0].txNumber + " (" + blocks.length + " bloques)");
-    }
-    allBlocks = allBlocks.concat(blocks);
-  });
-
-  doc.body.removeChild(measureStage);
 
   var sheetsRoot = doc.getElementById("sheetsRoot");
   var totalSheets = 0;
+  var longWarnings = [];
 
-  if (studioMode === "auto") {
-    // Empaquetado inteligente en 2 columnas verticales de 284mm
-    var currentSheet = null;
-    var col0, col1, col0Used = 0, col1Used = 0;
-
-    function openNewAutoSheet() {
-      var s = createStudioA4Sheet(doc, "auto");
-      col0 = doc.createElement("div"); col0.className = "auto-col";
-      col1 = doc.createElement("div"); col1.className = "auto-col";
-      s.grid.appendChild(col0);
-      s.grid.appendChild(col1);
-      sheetsRoot.appendChild(s.page);
-      currentSheet = s;
-      col0Used = 0;
-      col1Used = 0;
-      totalSheets++;
-    }
-
-    openNewAutoSheet();
-
-    allBlocks.forEach(function(blk) {
-      var needDiv0 = col0.children.length > 0 ? dividerH : 0;
-      var needDiv1 = col1.children.length > 0 ? dividerH : 0;
-
-      if (col0Used + needDiv0 + blk.height <= maxSlotH) {
-        if (needDiv0) { var d0 = doc.createElement("div"); d0.className = "auto-ticket-divider"; col0.appendChild(d0); }
-        col0.appendChild(blk.el);
-        col0Used += needDiv0 + blk.height;
-      } else if (col1Used + needDiv1 + blk.height <= maxSlotH) {
-        if (needDiv1) { var d1 = doc.createElement("div"); d1.className = "auto-ticket-divider"; col1.appendChild(d1); }
-        col1.appendChild(blk.el);
-        col1Used += needDiv1 + blk.height;
-      } else {
-        openNewAutoSheet();
-        col0.appendChild(blk.el);
-        col0Used = blk.height;
-      }
+  if (isFullMode) {
+    printQueue.forEach(function(qItem) {
+      var data = txDetailCache[qItem.id];
+      if (!data) return;
+      var a4Pages = buildStudioFullPages(doc, data, measureStage, maxSlotH);
+      a4Pages.forEach(function(pageEl) {
+        sheetsRoot.appendChild(pageEl);
+        totalSheets++;
+      });
     });
+    doc.body.removeChild(measureStage);
   } else {
-    // Grilla fija: 2x1 (2), 3x1 (3), 2x2 (4)
-    var perSheet = studioMode === "2x1" ? 2 : (studioMode === "3x1" ? 3 : 4);
-    for (var idx = 0; idx < allBlocks.length; idx += perSheet) {
-      var sheetObj = createStudioA4Sheet(doc, studioMode);
-      for (var slot = 0; slot < perSheet; slot++) {
-        var blk = allBlocks[idx + slot];
-        if (blk) {
-          sheetObj.grid.appendChild(blk.el);
-        } else {
-          sheetObj.grid.appendChild(doc.createElement("div"));
-        }
+    var dividerH = 27;
+    var allBlocks = [];
+
+    printQueue.forEach(function(qItem) {
+      var data = txDetailCache[qItem.id];
+      if (!data) return;
+      var blocks = buildStudioTicketBlocks(doc, data, measureStage, maxSlotH);
+      if (blocks.length > 1 && (studioMode === "2x2" || studioMode === "3x1")) {
+        longWarnings.push("#" + blocks[0].txNumber + " (" + blocks.length + " bloques)");
       }
-      sheetsRoot.appendChild(sheetObj.page);
-      totalSheets++;
+      allBlocks = allBlocks.concat(blocks);
+    });
+
+    doc.body.removeChild(measureStage);
+
+    if (studioMode === "auto") {
+      var col0, col1, col0Used = 0, col1Used = 0;
+
+      function openNewAutoSheet() {
+        var s = createStudioA4Sheet(doc, "auto");
+        col0 = doc.createElement("div"); col0.className = "auto-col";
+        col1 = doc.createElement("div"); col1.className = "auto-col";
+        s.grid.appendChild(col0);
+        s.grid.appendChild(col1);
+        sheetsRoot.appendChild(s.page);
+        col0Used = 0;
+        col1Used = 0;
+        totalSheets++;
+      }
+
+      openNewAutoSheet();
+
+      allBlocks.forEach(function(blk) {
+        var needDiv0 = col0.children.length > 0 ? dividerH : 0;
+        var needDiv1 = col1.children.length > 0 ? dividerH : 0;
+
+        if (col0Used + needDiv0 + blk.height <= maxSlotH) {
+          if (needDiv0) { var d0 = doc.createElement("div"); d0.className = "auto-ticket-divider"; col0.appendChild(d0); }
+          col0.appendChild(blk.el);
+          col0Used += needDiv0 + blk.height;
+        } else if (col1Used + needDiv1 + blk.height <= maxSlotH) {
+          if (needDiv1) { var d1 = doc.createElement("div"); d1.className = "auto-ticket-divider"; col1.appendChild(d1); }
+          col1.appendChild(blk.el);
+          col1Used += needDiv1 + blk.height;
+        } else {
+          openNewAutoSheet();
+          col0.appendChild(blk.el);
+          col0Used = blk.height;
+        }
+      });
+    } else {
+      var perSheet = studioMode === "2x1" ? 2 : (studioMode === "3x1" ? 3 : 4);
+      for (var idx = 0; idx < allBlocks.length; idx += perSheet) {
+        var sheetObj = createStudioA4Sheet(doc, studioMode);
+        for (var slot = 0; slot < perSheet; slot++) {
+          var blk = allBlocks[idx + slot];
+          if (blk) {
+            sheetObj.grid.appendChild(blk.el);
+          } else {
+            sheetObj.grid.appendChild(doc.createElement("div"));
+          }
+        }
+        sheetsRoot.appendChild(sheetObj.page);
+        totalSheets++;
+      }
     }
   }
 
   summaryLbl.textContent = totalSheets + (totalSheets === 1 ? " hoja A4" : " hojas A4") + " · " + printQueue.length + (printQueue.length === 1 ? " comprobante" : " comprobantes");
 
+  studioCurrentViewPage = 1;
+  syncStudioPageNav(totalSheets);
+
+  // Sincronizar número de hoja visible cuando el usuario hace scroll manual
+  frame.contentWindow.onscroll = function() {
+    var pages = doc.querySelectorAll(".a4-page");
+    if (pages.length <= 1) return;
+    var midY = frame.contentWindow.innerHeight * 0.45;
+    var active = 1;
+    for (var p = 0; p < pages.length; p++) {
+      var r = pages[p].getBoundingClientRect();
+      if (r.top <= midY) active = p + 1;
+    }
+    if (active !== studioCurrentViewPage) {
+      studioCurrentViewPage = active;
+      syncStudioPageNav(pages.length);
+    }
+  };
+
   if (longWarnings.length > 0) {
-    warnBanner.innerHTML = "<span>⚠️</span> <span>Comprobantes extensos divididos en modo <strong>" + studioMode.toUpperCase() + "</strong>: " + longWarnings.join(", ") + ". Sugerencia: cambia a <strong>Auto (2 cols)</strong> o <strong>2×1</strong>, o quítalos desde el panel izquierdo.</span>";
+    warnBanner.innerHTML = "<span>⚠️</span> <span>Comprobantes extensos divididos en modo <strong>" + studioMode.toUpperCase() + "</strong>: " + longWarnings.join(", ") + ". Sugerencia: cambia a <strong>Auto (2 cols)</strong>, <strong>2×1</strong> o <strong>A4 Completa</strong>, o quítalos desde el panel izquierdo.</span>";
     warnBanner.classList.remove("hidden");
   } else {
     warnBanner.classList.add("hidden");
@@ -2664,11 +2878,14 @@ function renderStudioQueuePanel() {
 
   printQueue.forEach(function(item, idx) {
     var row = document.createElement("div");
-    row.className = "bg-white border border-slate-200 rounded-xl p-2 flex items-center justify-between gap-2 text-xs shadow-2xs";
+    row.className = "bg-white border border-slate-200 rounded-xl p-2 flex items-center justify-between gap-2 text-xs shadow-2xs cursor-grab active:cursor-grabbing transition-all select-none";
+    row.draggable = true;
+
     var cached = txDetailCache[item.id];
     var itemCount = cached && cached.products ? cached.products.length : "?";
 
     row.innerHTML =
+      '<div class="text-slate-300 font-bold text-sm leading-none px-0.5 flex-shrink-0" title="Arrastrar para reordenar">⋮⋮</div>' +
       '<div class="min-w-0 flex-1">' +
         '<div class="font-bold text-slate-800 truncate"><span class="text-indigo-600 font-mono">#' + escapeHtml(item.number) + '</span> · ' + escapeHtml(item.client) + '</div>' +
         '<div class="text-[10px] text-slate-400">' + itemCount + ' ítems · ' + currencyFormatter.format(item.value || 0) + '</div>' +
@@ -2679,6 +2896,49 @@ function renderStudioQueuePanel() {
         '<button type="button" class="btn-q-del px-1.5 py-0.5 rounded hover:bg-rose-50 text-rose-500 font-bold" title="Quitar">✕</button>' +
       '</div>';
 
+    // Evitar que pulsar un botón dispare arrastre
+    row.querySelectorAll("button").forEach(function(btn) {
+      btn.onmousedown = function(e) { e.stopPropagation(); };
+    });
+
+    // Drag & Drop nativo
+    row.ondragstart = function(e) {
+      studioDragSrcIdx = idx;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(idx));
+      row.classList.add("opacity-40");
+    };
+    row.ondragend = function() {
+      studioDragSrcIdx = null;
+      row.classList.remove("opacity-40");
+      list.querySelectorAll("div.ring-2").forEach(function(el) {
+        el.classList.remove("ring-2", "ring-indigo-400", "border-indigo-400");
+      });
+    };
+    row.ondragover = function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (studioDragSrcIdx !== null && studioDragSrcIdx !== idx) {
+        row.classList.add("ring-2", "ring-indigo-400", "border-indigo-400");
+      }
+    };
+    row.ondragleave = function() {
+      row.classList.remove("ring-2", "ring-indigo-400", "border-indigo-400");
+    };
+    row.ondrop = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.remove("ring-2", "ring-indigo-400", "border-indigo-400");
+      if (studioDragSrcIdx !== null && studioDragSrcIdx !== idx) {
+        var moved = printQueue.splice(studioDragSrcIdx, 1)[0];
+        printQueue.splice(idx, 0, moved);
+        studioDragSrcIdx = null;
+        renderStudioQueuePanel();
+        renderPrintStudioPreview();
+      }
+    };
+
+    // Botones tradicionales ↑ / ↓ / ✕
     row.querySelector(".btn-q-up").onclick = function(e) {
       e.stopPropagation();
       var tmp = printQueue[idx - 1];

@@ -50,31 +50,47 @@
       padding-top: 4px;
     }
 
-    /* ================= FORMATO 1: A4 COMPLETA INDIVIDUAL ================= */
-    body.layout-full { font-size: 11px; }
+    /* ================= FORMATO 1: A4 COMPLETA (Individual y Print Studio) ================= */
+    body.layout-full,
+    body.studio-mode-full { font-size: 11px; }
+
     body.layout-full .sheet,
-    body.layout-full .measure-stage { width: 180mm; }
-    body.layout-full .sheet {
+    body.layout-full .measure-stage,
+    body.studio-mode-full .measure-stage { width: 180mm; }
+
+    body.layout-full .sheet,
+    .sheet-full-studio {
+      width: 180mm;
       height: 270mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-    body.layout-full .sheet-body { flex: 1 0 auto; }
-    body.layout-full .sheet-footer { margin-top: auto; padding-top: 8px; }
-    body.layout-full .measure-ruler { height: 270mm; }
+    body.layout-full .sheet-body,
+    .sheet-full-studio .sheet-body { flex: 1 0 auto; }
 
-    body.layout-full .header-box {
+    body.layout-full .sheet-footer,
+    .sheet-full-studio .sheet-footer { margin-top: auto; padding-top: 8px; }
+
+    body.layout-full .measure-ruler,
+    body.studio-mode-full .measure-ruler { height: 270mm; }
+
+    body.layout-full .header-box,
+    body.studio-mode-full .header-box {
       display: flex; justify-content: space-between; align-items: center;
       border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px;
     }
-    body.layout-full .header-cont {
+    body.layout-full .header-cont,
+    body.studio-mode-full .header-cont {
       display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1.5px solid #0f172a; padding-bottom: 5px; margin-bottom: 10px; font-size: 11px;
     }
-    body.layout-full .logo-container { display: flex; align-items: center; gap: 12px; }
-    body.layout-full .logo-img { height: 40px; max-width: 65px; object-fit: contain; }
-    body.layout-full .logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
+    body.layout-full .logo-container,
+    body.studio-mode-full .logo-container { display: flex; align-items: center; gap: 12px; }
+    body.layout-full .logo-img,
+    body.studio-mode-full .logo-img { height: 40px; max-width: 65px; object-fit: contain; }
+    body.layout-full .logo-text,
+    body.studio-mode-full .logo-text { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
 
     .meta-2col-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;
@@ -83,12 +99,15 @@
     }
     .meta-lbl { color: #64748b; }
 
-    body.layout-full table.products-table { width: 100%; border-collapse: collapse; }
-    body.layout-full table.products-table th {
+    body.layout-full table.products-table,
+    body.studio-mode-full table.products-table { width: 100%; border-collapse: collapse; }
+    body.layout-full table.products-table th,
+    body.studio-mode-full table.products-table th {
       background: #0f172a; color: #ffffff; padding: 5px 8px;
       font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
     }
-    body.layout-full table.products-table td {
+    body.layout-full table.products-table td,
+    body.studio-mode-full table.products-table td {
       padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; vertical-align: top;
     }
 
@@ -105,11 +124,13 @@
     }
     .totals-horizontal-table th:last-child, .totals-horizontal-table td:last-child { border-right: none; }
 
-    body.layout-full .sign-box {
+    body.layout-full .sign-box,
+    body.studio-mode-full .sign-box {
       display: flex; justify-content: space-between; align-items: flex-end;
       font-size: 10.5px; color: #64748b; padding-top: 6px;
     }
-    body.layout-full .sign-line {
+    body.layout-full .sign-line,
+    body.studio-mode-full .sign-line {
       width: 220px; border-top: 1px dashed #94a3b8; text-align: center; padding-top: 5px;
     }
 
@@ -173,6 +194,8 @@
       }
       body.layout-studio.studio-portrait .a4-page { width: 210mm; height: 297mm; }
       body.layout-studio.studio-landscape .a4-page { width: 297mm; height: 210mm; }
+      body.layout-studio.studio-mode-full .a4-page { padding: 12mm 15mm; }
+
     }
 
     @media print {
@@ -185,6 +208,8 @@
       }
       body.layout-studio.studio-portrait .a4-page { width: 198mm; height: 285mm; }
       body.layout-studio.studio-landscape .a4-page { width: 285mm; height: 198mm; }
+      body.layout-studio.studio-mode-full .a4-page { width: 180mm; height: 270mm; padding: 0; }
+
     }
 
     .a4-page {

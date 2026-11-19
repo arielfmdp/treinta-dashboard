@@ -552,13 +552,20 @@
           </div>
         </div>
 
-        <!-- Selector de 4 Modos -->
+        <!-- Selector de 5 Modos -->
         <div class="inline-flex flex-wrap bg-slate-200/70 p-1 rounded-xl border border-slate-300/70 text-xs gap-1">
           <button type="button" class="btn-studio-mode px-2.5 py-1 rounded-lg font-bold transition" data-mode="auto">🧩 Auto (2 cols)</button>
           <button type="button" class="btn-studio-mode px-2.5 py-1 rounded-lg font-semibold transition" data-mode="2x1">📄 2×1 Vertical</button>
           <button type="button" class="btn-studio-mode px-2.5 py-1 rounded-lg font-semibold transition" data-mode="3x1">📑 3×1 Horizontal</button>
           <button type="button" class="btn-studio-mode px-2.5 py-1 rounded-lg font-semibold transition" data-mode="2x2">⊞ 2×2 Vertical</button>
+          <button type="button" class="btn-studio-mode px-2.5 py-1 rounded-lg font-semibold transition" data-mode="full">📃 A4 Completa</button>
         </div>
+
+        <div class="flex items-center gap-3">
+          <label id="lblStudioCutLines" class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+            <input type="checkbox" id="chkStudioCutLines" checked class="rounded text-indigo-600">
+            <span>Líneas de corte</span>
+          </label>
 
         <div class="flex items-center gap-3">
           <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none">
@@ -594,8 +601,13 @@
             <p id="studioLoadingMsg" class="font-bold">Descargando comprobantes...</p>
           </div>
           <iframe id="printPreviewFrame" class="w-full h-full border-0 bg-slate-700"></iframe>
+          <!-- Navegador flotante entre páginas (solo visible cuando hay >1 hoja A4) -->
+            <div id="studioPageNavBar" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-10 bg-slate-900/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-xl border border-slate-700 flex items-center gap-2 text-xs select-none">
+              <button id="btnStudioPrevPage" type="button" class="px-2 py-0.5 rounded-full hover:bg-slate-700 font-bold disabled:opacity-30 transition" title="Hoja anterior">◀</button>
+              <span id="lblStudioPageIndicator" class="font-mono font-bold px-1 min-w-[90px] text-center">Hoja 1 / 1</span>
+              <button id="btnStudioNextPage" type="button" class="px-2 py-0.5 rounded-full hover:bg-slate-700 font-bold disabled:opacity-30 transition" title="Hoja siguiente">▶</button>
+            </div>
         </div>
-
       </div>
     </div>
   </div>
