@@ -2017,13 +2017,15 @@ function buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue) {
   if (isPaid) {
     return '<div class="totals-paid-badge">✓ Pagado en su totalidad</div>';
   }
-  return '<table class="totals-card totals-card-pay">' +
-           '<thead><tr><th>Abonado</th><th>Pendiente</th></tr></thead>' +
-           '<tbody><tr>' +
-             '<td style="color: #059669; background: #ecfdf5;">' + totalPaidVal + '</td>' +
-             '<td style="color: #e11d48; font-weight: 900; background: #fff1f2;">' + currencyFormatter.format(balanceDue) + '</td>' +
-           '</tr></tbody>' +
-         '</table>';
+  return '<div class="totals-box-pay">' +
+           '<table class="totals-card totals-card-pay">' +
+             '<thead><tr><th>Abonado</th><th>Pendiente</th></tr></thead>' +
+             '<tbody><tr>' +
+               '<td style="color: #059669; background: #ecfdf5;">' + totalPaidVal + '</td>' +
+               '<td style="color: #e11d48; font-weight: 900; background: #fff1f2;">' + currencyFormatter.format(balanceDue) + '</td>' +
+             '</tr></tbody>' +
+           '</table>' +
+         '</div>';
 }
 
 async function printReceipt(layoutType) {

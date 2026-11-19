@@ -103,7 +103,7 @@
     body.studio-mode-full table.products-table { width: 100%; border-collapse: collapse; }
     body.layout-full table.products-table th,
     body.studio-mode-full table.products-table th {
-      background: #0f172a; color: #ffffff; padding: 5px 8px;
+      background: #585858; color: #ffffff; padding: 5px 8px;
       font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
     }
     body.layout-full table.products-table td,
@@ -119,10 +119,26 @@
       margin-bottom: 32px;
     }
 
-    .totals-card {
-      border-collapse: collapse;
+    /* Contenedores con borde redondeado real (evita el bug de border-collapse + border-radius en PDF) */
+    .totals-box-pay {
+      width: 62mm;
+      border: 1px solid #cbd5e1;
       border-radius: 8px;
       overflow: hidden;
+      background: #ffffff;
+    }
+    .totals-box-main {
+      flex: 1;
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    .totals-card {
+      width: 100%;
+      height: 100%;
+      border-collapse: collapse;
       text-align: center;
     }
     .totals-card th {
@@ -138,24 +154,46 @@
       white-space: nowrap;
     }
 
-    /* Bloque izquierdo (Estado de cuenta / Pago): visualmente más tenue */
-    .totals-card-pay {
-      width: 62mm;
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-    }
+    /* Bloque izquierdo (Estado de cuenta / Pago) */
     .totals-card-pay th {
       background: #f8fafc;
       color: #64748b;
-      border-bottom: 1px solid #e2e8f0;
-      border-right: 1px solid #f1f5f9;
+      border-bottom: 1px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
     }
     .totals-card-pay td {
       font-size: 11px;
-      border-right: 1px solid #f1f5f9;
+      border-right: 1px solid #e2e8f0;
     }
     .totals-card-pay th:last-child,
     .totals-card-pay td:last-child { border-right: none; }
+
+    /* Bloque derecho (Totales del comprobante) */
+    .totals-card-main th {
+      background: #f1f5f9;
+      color: #475569;
+      border-bottom: 1px solid #cbd5e1;
+      border-right: 1px solid #cbd5e1;
+    }
+    .totals-card-main td {
+      border-right: 1px solid #cbd5e1;
+    }
+    .totals-card-main th:last-child {
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: 800;
+      border-right: none;
+      border-left: 1.5px solid #94a3b8;
+      width: 38%;
+    }
+    .totals-card-main td:last-child {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-size: 13.5px;
+      font-weight: 900;
+      border-right: none;
+      border-left: 1.5px solid #94a3b8;
+    }
 
     .totals-paid-badge {
       width: 62mm;
@@ -166,8 +204,10 @@
       font-size: 11.5px;
       font-weight: 700;
       text-align: center;
+      border: 1px solid #00e87083;
+      border-radius: 8px;
     }
-    
+
     /* Bloque derecho (Totales del comprobante): jerarquía principal a la derecha */
     .totals-card-main {
       flex: 1;
@@ -456,22 +496,24 @@
       <div class="totals-split-wrap">
         {{BLOQUE_PAGO_FULL}}
 
-        <table class="totals-card totals-card-main">
-          <thead>
-            <tr>
-              <th>Subtotal</th>
-              <th>Descuento</th>
-              <th>Total Venta</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="color: #334155;">{{SUBTOTAL}}</td>
-              <td style="{{DESCUENTO_STYLE}}">{{DESCUENTO_VAL}}</td>
-              <td>{{TOTAL}}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="totals-box-main">
+          <table class="totals-card totals-card-main">
+            <thead>
+              <tr>
+                <th>Subtotal</th>
+                <th>Descuento</th>
+                <th>Total Venta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color: #334155;">{{SUBTOTAL}}</td>
+                <td style="{{DESCUENTO_STYLE}}">{{DESCUENTO_VAL}}</td>
+                <td>{{TOTAL}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="sign-box">
