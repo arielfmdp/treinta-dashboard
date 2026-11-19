@@ -2363,8 +2363,7 @@ function buildReceiptDataMap(data) {
       ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
       : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>',
     totalItems: products.length
-  };
-  };
+  };  
 }
 
 function hydrateTplHtml(tplEl, map) {
