@@ -1618,14 +1618,13 @@ function renderTransactionsTable() {
                      'data-tx-val="' + (tx.value || 0) + '" ' +
                      (isQueued ? 'checked' : '') + '>' +
                    '</td>' +
-                   '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + txNumLabel + '</td>' +
-                   '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + (tx.transactionCount || tx.id.slice(0, 8)) + '</td>' +
+                   '<td class="py-3 px-4 font-mono font-bold text-indigo-600">#' + escapeHtml(txNumLabel) + '</td>' +
                    '<td class="py-3 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">' + dateFormatted + '</td>' +
                    '<td class="py-3 px-4">' + clientDisplay + '</td>' +
                    '<td class="py-3 px-4 text-slate-600">' + (tx.description || "-") + '</td>' +
                    '<td class="py-3 px-4 text-center"><span class="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-600 text-[10px]">' + paymentMethod + '</span></td>' +
                    '<td class="py-3 px-4 text-right font-bold text-slate-900 text-sm">' + currencyFormatter.format(tx.value || 0) + '</td>';
-
+    
     body.appendChild(tr);
   });
 
@@ -2063,7 +2062,7 @@ async function printReceipt(layoutType) {
     : '';
 
   var pageRuleCss = isFull
-    ? "@page { size: A4 portrait; margin: 12mm 15mm; }"
+    ? "@page { size: A4 portrait; margin: 10mm 15mm 8mm 15mm; }"
     : "@page { size: 105mm 297mm; margin: 7mm 6mm; }";
 
   try {
@@ -2730,7 +2729,7 @@ async function renderPrintStudioPreview() {
 
   var isLandscape = studioMode === "3x1";
   var pageRuleCss = isFullMode
-    ? "@page { size: A4 portrait; margin: 12mm 15mm; }"
+    ? "@page { size: A4 portrait; margin: 12mm 15mm 8mm 15mm; }"
     : (isLandscape
         ? "@page { size: A4 landscape; margin: 6mm; }"
         : "@page { size: A4 portrait; margin: 6mm; }");

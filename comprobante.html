@@ -61,7 +61,7 @@
     body.layout-full .sheet,
     .sheet-full-studio {
       width: 180mm;
-      height: 270mm;
+      height: 275mm; /* 270 originalmente*/
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -73,7 +73,7 @@
     .sheet-full-studio .sheet-footer { margin-top: auto; padding-top: 8px; }
 
     body.layout-full .measure-ruler,
-    body.studio-mode-full .measure-ruler { height: 270mm; }
+    body.studio-mode-full .measure-ruler { height: 275mm; }
 
     body.layout-full .header-box,
     body.studio-mode-full .header-box {
@@ -113,7 +113,7 @@
 
     .totals-horizontal-table {
       width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #cbd5e1;
-      border-radius: 8px; overflow: hidden; margin-bottom: 16px; text-align: center;
+      border-radius: 8px; overflow: hidden; margin-bottom: 32px; text-align: center;
     }
     .totals-horizontal-table th {
       background: #f1f5f9; color: #475569; font-size: 10px; text-transform: uppercase;
@@ -127,7 +127,7 @@
     body.layout-full .sign-box,
     body.studio-mode-full .sign-box {
       display: flex; justify-content: space-between; align-items: flex-end;
-      font-size: 10.5px; color: #64748b; padding-top: 6px;
+      font-size: 10.5px; color: #64748b; padding-top: 8px;
     }
     body.layout-full .sign-line,
     body.studio-mode-full .sign-line {
@@ -144,7 +144,7 @@
 
     /* Estilos compartidos de ticket compacto (Media A4 individual y Print Studio) */
     .header-strip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
-    .logo-img-small { height: 26px; max-width: 42px; object-fit: contain; }
+    .logo-img-small { height: 34px; max-width: 56px; object-fit: contain; }
     .header-cont-half {
       display: flex; justify-content: space-between; align-items: center;
       border-bottom: 1px solid #0f172a; padding-bottom: 3px; margin-bottom: 4px; font-size: 9.5px;
@@ -194,7 +194,7 @@
       }
       body.layout-studio.studio-portrait .a4-page { width: 210mm; height: 297mm; }
       body.layout-studio.studio-landscape .a4-page { width: 297mm; height: 210mm; }
-      body.layout-studio.studio-mode-full .a4-page { padding: 12mm 15mm; }
+      body.layout-studio.studio-mode-full .a4-page { padding: 10mm 15mm 8mm 15mm; }
 
     }
 
@@ -208,7 +208,7 @@
       }
       body.layout-studio.studio-portrait .a4-page { width: 198mm; height: 285mm; }
       body.layout-studio.studio-landscape .a4-page { width: 285mm; height: 198mm; }
-      body.layout-studio.studio-mode-full .a4-page { width: 180mm; height: 270mm; padding: 0; }
+      body.layout-studio.studio-mode-full .a4-page { width: 180mm; height: 275mm; padding: 0; }
 
     }
 
@@ -263,7 +263,7 @@
     body.studio-h137 .measure-ruler { height: 137mm; }
 
     /* Compactación leve para 2x2: estira capacidad hasta ~6-7 ítems legibles */
-    body.studio-mode-2x2 .logo-img-small { height: 22px; }
+    body.studio-mode-2x2 .logo-img-small { height: 28px; }
     body.studio-mode-2x2 .meta-half-grid { margin-bottom: 3px; font-size: 8.5px; line-height: 1.25; }
     body.studio-mode-2x2 .half-item-row { padding: 2.5px 0; font-size: 9px; }
     body.studio-mode-2x2 .half-item-sub { font-size: 8px; }
@@ -386,12 +386,14 @@
   <template id="tplHalfHeader">
     <div>
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
-        <div style="flex: 1; text-align: center;">
-          <div class="header-strip">
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
             <img src="{{LOGO_URL}}" class="logo-img-small" alt="Logo">
-            <div style="font-size: 14px; font-weight: 900; letter-spacing: -0.5px;">TRAPOS MDP</div>
+            <div>
+              <div style="font-size: 14px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.05;">TRAPOS MDP</div>
+              <div style="font-size: 8.5px; color: #64748b; margin-top: 1px;">Distribuidora Mayorista</div>
+            </div>
           </div>
-          <div style="font-size: 8.5px; color: #64748b;">Distribuidora Mayorista</div>
         </div>
         <div class="page-indicator hidden" style="font-size: 8px; margin-top: 0;"></div>
       </div>
