@@ -2015,15 +2015,12 @@ function paginateAndRenderReceipt(doc, isFull, products) {
 
 function buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue) {
   if (isPaid) {
-    return '<table class="totals-card totals-card-pay">' +
-             '<thead><tr><th>Estado de Pago</th></tr></thead>' +
-             '<tbody><tr><td style="color: #059669; font-weight: 700;">✓ Pagado en su totalidad</td></tr></tbody>' +
-           '</table>';
+    return '<div class="totals-paid-badge">✓ Pagado en su totalidad</div>';
   }
   return '<table class="totals-card totals-card-pay">' +
            '<thead><tr><th>Abonado</th><th>Pendiente</th></tr></thead>' +
            '<tbody><tr>' +
-             '<td style="color: #059669;">' + totalPaidVal + '</td>' +
+             '<td style="color: #059669; background: #ecfdf5;">' + totalPaidVal + '</td>' +
              '<td style="color: #e11d48; font-weight: 900; background: #fff1f2;">' + currencyFormatter.format(balanceDue) + '</td>' +
            '</tr></tbody>' +
          '</table>';
@@ -2065,7 +2062,7 @@ async function printReceipt(layoutType) {
   var statusLabel = isPaid ? "Pagada" : "Pendiente";
   var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
 
-  var discountValStr = discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0";
+  var discountValStr = discountNum > 0 ? currencyFormatter.format(discountNum) : "$ 0";
   var discountStyle = discountNum > 0 ? "color: #e11d48;" : "color: #94a3b8; font-weight: 600;";
   var paymentBlockFull = buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue);
 
@@ -2074,7 +2071,7 @@ async function printReceipt(layoutType) {
     : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>';
 
   var descBlockHalf = discountNum > 0
-    ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
+    ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>' + currencyFormatter.format(discountNum) + '</span></div>'
     : '';
 
   var pageRuleCss = isFull
