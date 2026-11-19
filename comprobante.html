@@ -146,12 +146,28 @@
     .header-strip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2px; }
     .logo-img-small { height: 34px; max-width: 56px; object-fit: contain; }
     .header-cont-half {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; gap: 6px;
       border-bottom: 1px solid #0f172a; padding-bottom: 3px; margin-bottom: 4px; font-size: 9.5px;
     }
+    .header-cont-half > div:first-child {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .meta-half-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px;
-      margin-bottom: 5px; font-size: 9px; line-height: 1.3;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 33mm; /* Prioridad a Cliente; ancho fijo para Comp/Vend/Estado */
+      gap: 2px 6px;
+      margin-bottom: 5px;
+      font-size: 9px;
+      line-height: 1.35;
+    }
+    .meta-half-grid > div {
+      min-width: 0; /* Obligatorio en CSS Grid para permitir el truncado con ... */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .half-section-title {
       font-size: 8.5px; font-weight: bold; text-transform: uppercase; color: #64748b;
