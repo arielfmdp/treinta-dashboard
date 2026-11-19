@@ -2013,6 +2013,22 @@ function paginateAndRenderReceipt(doc, isFull, products) {
   });
 }
 
+function buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue) {
+  if (isPaid) {
+    return '<table class="totals-card totals-card-pay">' +
+             '<thead><tr><th>Estado de Pago</th></tr></thead>' +
+             '<tbody><tr><td style="color: #059669; font-weight: 700;">✓ Pagado en su totalidad</td></tr></tbody>' +
+           '</table>';
+  }
+  return '<table class="totals-card totals-card-pay">' +
+           '<thead><tr><th>Abonado</th><th>Pendiente</th></tr></thead>' +
+           '<tbody><tr>' +
+             '<td style="color: #059669;">' + totalPaidVal + '</td>' +
+             '<td style="color: #e11d48; font-weight: 900; background: #fff1f2;">' + currencyFormatter.format(balanceDue) + '</td>' +
+           '</tr></tbody>' +
+         '</table>';
+}
+
 async function printReceipt(layoutType) {
   if (!currentTxDetailData) return;
 
@@ -2050,8 +2066,8 @@ async function printReceipt(layoutType) {
   var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
 
   var discountValStr = discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0";
-  var balanceDueStr = currencyFormatter.format(balanceDue);
-  var balanceDueStyle = balanceDue > 1 ? "color: #e11d48; font-weight: 900;" : "color: #059669;";
+  var discountStyle = discountNum > 0 ? "color: #e11d48;" : "color: #94a3b8; font-weight: 600;";
+  var paymentBlockFull = buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue);
 
   var saldoFilaHalf = balanceDue > 1
     ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
@@ -2080,13 +2096,13 @@ async function printReceipt(layoutType) {
       .replace(/{{VENDEDOR}}/g, empName)
       .replace(/{{MEDIO_PAGO}}/g, tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"))
       .replace(/{{ESTADO_LABEL}}/g, statusLabel)
+      .replace("{{BLOQUE_PAGO_FULL}}", paymentBlockFull)
       .replace(/{{SUBTOTAL}}/g, subtotalVal)
-      .replace(/{{DESCUENTO_VAL}}/g, discountValStr)
+      .replace("{{DESCUENTO_VAL}}", discountValStr)
+      .replace("{{DESCUENTO_STYLE}}", discountStyle)
       .replace("{{DESCUENTO_BLOQUE_HALF}}", descBlockHalf)
       .replace(/{{TOTAL}}/g, totalVal)
       .replace(/{{TOTAL_ABONADO}}/g, totalPaidVal)
-      .replace("{{SALDO_PENDIENTE_VAL}}", balanceDueStr)
-      .replace("{{ESTILO_PENDIENTE}}", balanceDueStyle)
       .replace("{{SALDO_PENDIENTE_FILA_HALF}}", saldoFilaHalf)
       .replace(/{{TOTAL_ITEMS}}/g, products.length);
 
@@ -2323,6 +2339,8 @@ function buildReceiptDataMap(data) {
   var discountNum = totals.totalDiscount || 0;
   var totalPaidNum = data._totalPaid !== undefined ? data._totalPaid : (totals.total || tx.value || 0);
   var balanceDue = data._balanceRemaining !== undefined ? data._balanceRemaining : 0;
+  var isPaid = data._isPaid !== undefined ? data._isPaid : true;
+  var totalPaidVal = currencyFormatter.format(totalPaidNum);
 
   return {
     logoUrl: "https://arielfmdp.github.io/treinta-dashboard/LOGO.png",
@@ -2331,20 +2349,21 @@ function buildReceiptDataMap(data) {
     dateStr: dateStr,
     empName: escapeHtml(rawEmpName || "Vendedor Millenial"),
     paymentLabel: tx.paymentTypeId === 1 ? "Efectivo" : (tx.paymentTypeId === 6 ? "Deuda / Cta. Cte." : "Otro"),
-    statusLabel: (data._isPaid !== undefined ? data._isPaid : true) ? "Pagada" : "Pendiente",
+    statusLabel: isPaid ? "Pagada" : "Pendiente",
+    paymentBlockFull: buildFullPaymentBlockHtml(isPaid, totalPaidVal, balanceDue),
     subtotalVal: currencyFormatter.format(totals.subtotal || totals.total || tx.value || 0),
     discountValStr: discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0",
+    discountStyle: discountNum > 0 ? "color: #e11d48;" : "color: #94a3b8; font-weight: 600;",
     descBlockHalf: discountNum > 0
       ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
       : '',
     totalVal: currencyFormatter.format(totals.total || tx.value || 0),
-    totalPaidVal: currencyFormatter.format(totalPaidNum),
-    balanceDueStr: currencyFormatter.format(balanceDue),
-    balanceDueStyle: balanceDue > 1 ? "color: #e11d48; font-weight: 900;" : "color: #059669;",
+    totalPaidVal: totalPaidVal,
     saldoFilaHalf: balanceDue > 1
       ? '<div style="display: flex; justify-content: space-between; color: #e11d48; font-weight: bold; margin-top: 2px;"><span>Saldo Pendiente:</span><span>' + currencyFormatter.format(balanceDue) + '</span></div>'
       : '<div style="display: flex; justify-content: space-between; color: #059669; margin-top: 2px;"><span>Saldo Pendiente:</span><span>$ 0</span></div>',
     totalItems: products.length
+  };
   };
 }
 
@@ -2358,13 +2377,13 @@ function hydrateTplHtml(tplEl, map) {
     .replace(/{{VENDEDOR}}/g, map.empName)
     .replace(/{{MEDIO_PAGO}}/g, map.paymentLabel)
     .replace(/{{ESTADO_LABEL}}/g, map.statusLabel)
+    .replace("{{BLOQUE_PAGO_FULL}}", map.paymentBlockFull)
     .replace(/{{SUBTOTAL}}/g, map.subtotalVal)
     .replace("{{DESCUENTO_VAL}}", map.discountValStr)
+    .replace("{{DESCUENTO_STYLE}}", map.discountStyle)
     .replace("{{DESCUENTO_BLOQUE_HALF}}", map.descBlockHalf)
     .replace(/{{TOTAL}}/g, map.totalVal)
     .replace(/{{TOTAL_ABONADO}}/g, map.totalPaidVal)
-    .replace("{{SALDO_PENDIENTE_VAL}}", map.balanceDueStr)
-    .replace("{{ESTILO_PENDIENTE}}", map.balanceDueStyle)
     .replace("{{SALDO_PENDIENTE_FILA_HALF}}", map.saldoFilaHalf)
     .replace(/{{TOTAL_ITEMS}}/g, map.totalItems);
   return wrapper.firstElementChild;

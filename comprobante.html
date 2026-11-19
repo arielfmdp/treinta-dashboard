@@ -111,18 +111,83 @@
       padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; vertical-align: top;
     }
 
-    .totals-horizontal-table {
-      width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #cbd5e1;
-      border-radius: 8px; overflow: hidden; margin-bottom: 32px; text-align: center;
+    .totals-split-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 8mm;
+      margin-bottom: 32px;
     }
-    .totals-horizontal-table th {
-      background: #f1f5f9; color: #475569; font-size: 10px; text-transform: uppercase;
-      padding: 6px 4px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #e2e8f0;
+
+    .totals-card {
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      text-align: center;
     }
-    .totals-horizontal-table td {
-      padding: 8px 6px; font-size: 12px; font-weight: bold; border-right: 1px solid #e2e8f0;
+    .totals-card th {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding: 6px 8px;
     }
-    .totals-horizontal-table th:last-child, .totals-horizontal-table td:last-child { border-right: none; }
+    .totals-card td {
+      padding: 8px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    /* Bloque izquierdo (Estado de cuenta / Pago): visualmente más tenue */
+    .totals-card-pay {
+      width: 62mm;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    .totals-card-pay th {
+      background: #f8fafc;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #f1f5f9;
+    }
+    .totals-card-pay td {
+      font-size: 11px;
+      border-right: 1px solid #f1f5f9;
+    }
+    .totals-card-pay th:last-child,
+    .totals-card-pay td:last-child { border-right: none; }
+
+    /* Bloque derecho (Totales del comprobante): jerarquía principal a la derecha */
+    .totals-card-main {
+      flex: 1;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+    }
+    .totals-card-main th {
+      background: #f1f5f9;
+      color: #475569;
+      border-bottom: 1px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
+    }
+    .totals-card-main td {
+      border-right: 1px solid #e2e8f0;
+    }
+    .totals-card-main th:last-child {
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: 800;
+      border-right: none;
+      border-left: 1.5px solid #cbd5e1;
+      width: 38%;
+    }
+    .totals-card-main td:last-child {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-size: 13.5px;
+      font-weight: 900;
+      border-right: none;
+      border-left: 1.5px solid #cbd5e1;
+    }
 
     body.layout-full .sign-box,
     body.studio-mode-full .sign-box {
@@ -377,27 +442,34 @@
 
   <template id="tplFullFooter">
     <div>
-      <table class="totals-horizontal-table">
-        <thead>
-          <tr><th>Subtotal</th><th>Descuento</th><th>Total Venta</th><th>Total Abonado</th><th>Pendiente</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{SUBTOTAL}}</td>
-            <td style="color: #e11d48;">{{DESCUENTO_VAL}}</td>
-            <td style="font-size: 13px; font-weight: 900; color: #0f172a;">{{TOTAL}}</td>
-            <td style="color: #059669;">{{TOTAL_ABONADO}}</td>
-            <td style="{{ESTILO_PENDIENTE}}">{{SALDO_PENDIENTE_VAL}}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="totals-split-wrap">
+        {{BLOQUE_PAGO_FULL}}
+
+        <table class="totals-card totals-card-main">
+          <thead>
+            <tr>
+              <th>Subtotal</th>
+              <th>Descuento</th>
+              <th>Total Venta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color: #334155;">{{SUBTOTAL}}</td>
+              <td style="{{DESCUENTO_STYLE}}">{{DESCUENTO_VAL}}</td>
+              <td>{{TOTAL}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="sign-box">
         <div>Comprobante no válido como factura.</div>
         <div class="sign-line">Firma y Aclaración de Recepción</div>
       </div>
     </div>
   </template>
-
+  
   <!-- ================= PLANTILLAS COMPACTAS (MEDIA A4 Y PRINT STUDIO) ================= -->
   <template id="tplHalfHeader">
     <div>
