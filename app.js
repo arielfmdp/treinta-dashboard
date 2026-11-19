@@ -1482,10 +1482,14 @@ function resetAndFetchTransactions() {
   allTransactions = [];
   txCurrentPage = 1;
   txHasMore = true;
-  document.getElementById("transactionsTableBody").innerHTML = '<tr><td colspan="7" class="text-center py-8 text-indigo-600 font-medium">Cargando comprobantes...</td></tr>';
+  document.getElementById("txTableCount").textContent = "Consultando comprobantes...";
+  document.getElementById("transactionsTableBody").innerHTML =
+    '<tr><td colspan="7" class="text-center py-8 text-indigo-600 font-medium">Cargando comprobantes...</td></tr>';
+  document.getElementById("txInfiniteScrollTrigger").classList.add("hidden");
   fetchTxBalance();
   fetchTransactionsPage();
 }
+
 
 async function fetchTxBalance() {
   var ts = getTxTimestamps();
@@ -1504,7 +1508,15 @@ async function fetchTxBalance() {
 async function fetchTransactionsPage() {
   if (txIsLoading || !txHasMore) return;
   txIsLoading = true;
-  document.getElementById("txLoadingText").textContent = "Cargando comprobantes...";
+
+  var triggerEl = document.getElementById("txInfiniteScrollTrigger");
+  var loadingTextEl = document.getElementById("txLoadingText");
+
+  // Solo mostrar el pie de scroll infinito cuando ya hay filas previas (página 2+)
+  if (txCurrentPage > 1) {
+    triggerEl.classList.remove("hidden");
+    loadingTextEl.textContent = "Cargando más comprobantes...";
+  }
 
   var ts = getTxTimestamps();
   var url = "https://core-api-gateway.treinta.co/transactions/stores/" + storeId +
@@ -1525,19 +1537,24 @@ async function fetchTransactionsPage() {
 
       renderTransactionsTable();
 
-      if (txHasMore) {
-        document.getElementById("txLoadingText").textContent = "Desplázate para cargar más comprobantes...";
+      if (allTransactions.length === 0) {
+        triggerEl.classList.add("hidden");
       } else {
-        document.getElementById("txLoadingText").textContent = "✅ Todos los comprobantes cargados (" + allTransactions.length + ")";
+        triggerEl.classList.remove("hidden");
+        loadingTextEl.textContent = txHasMore
+          ? "Desplázate para cargar más comprobantes..."
+          : "✅ Todos los comprobantes cargados (" + allTransactions.length + ")";
       }
     }
   } catch(e) {
     console.error("Error comprobantes:", e);
-    document.getElementById("txLoadingText").textContent = "Error al cargar comprobantes.";
+    triggerEl.classList.remove("hidden");
+    loadingTextEl.textContent = "Error al cargar comprobantes.";
   } finally {
     txIsLoading = false;
   }
 }
+
 
 function renderTransactionsTable() {
   var body = document.getElementById("transactionsTableBody");
@@ -1613,7 +1630,7 @@ function renderTransactionsTable() {
   });
 
   //sincroniza el checkbox maestro:
-  syncSelectAllcheckbox();
+  syncSelectAllCheckbox();
 }
 
 document.getElementById("txSearchInput").oninput = function(e) {
