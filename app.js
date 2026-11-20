@@ -2354,7 +2354,7 @@ function buildReceiptDataMap(data) {
     discountValStr: discountNum > 0 ? ("-" + currencyFormatter.format(discountNum)) : "$ 0",
     discountStyle: discountNum > 0 ? "color: #e11d48;" : "color: #94a3b8; font-weight: 600;",
     descBlockHalf: discountNum > 0
-      ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>-' + currencyFormatter.format(discountNum) + '</span></div>'
+      ? '<div style="display: flex; justify-content: space-between; color: #e11d48; margin-bottom: 2px;"><span>Descuento:</span><span>' + currencyFormatter.format(discountNum) + '</span></div>'
       : '',
     totalVal: currencyFormatter.format(totals.total || tx.value || 0),
     totalPaidVal: totalPaidVal,
