@@ -47,6 +47,14 @@ var invSortOrder = "desc";
 // Estado de columna Fecha Alta visible u oculta
 var invShowCreatedCol = localStorage.getItem("t_show_created_col") === "true";
 
+// Estado Semáforo de Reabastecimiento
+var invSemaphoreActive = false;
+var invSemaphoreLoading = false;
+var invSemaphoreDays = 30;
+var invSemaphoreFilter = "all"; // "all" | "buy" | "red" | "yellow" | "green" | "stagnant"
+var invFullCatalogCache = [];   // Catálogo completo (~814 ítems) una vez calculado
+var invSalesVelocityCache = {}; // { 15: { prodId: sold, ... }, 30: { ... } }
+
 var chartClientsInstance = null;
 var chartProductsInstance = null;
 var chartExecProfitInstance = null;
@@ -349,33 +357,136 @@ function renderCategoryPills() {
   });
 }
 
+function computeProductSemaphore(prod) {
+  var salesMap = invSalesVelocityCache[invSemaphoreDays] || {};
+  var sold = salesMap[prod.id] || 0;
+  var stock = prod.stock || 0;
+  var daily = sold / invSemaphoreDays;
+
+  if (sold > 0) {
+    var days = stock <= 0 ? 0 : (stock / daily);
+    var status = days < 7 ? "red" : (days <= 15 ? "yellow" : "green");
+    return { status: status, days: days, daily: daily, sold: sold };
+  }
+  if (stock > 0) {
+    return { status: "stagnant", days: Infinity, daily: 0, sold: 0 };
+  }
+  return { status: "inactive", days: Infinity, daily: 0, sold: 0 };
+}
+
+function getSemaphoreFilteredAndSortedItems() {
+  var list = invFullCatalogCache.slice();
+
+  // 1. Filtros de categoría / sin stock
+  if (invFilterOnlyNoStock) {
+    list = list.filter(function(p) { return (p.stock || 0) <= 0; });
+  } else if (invSelectedCategoryId) {
+    list = list.filter(function(p) { return p.storeCategoriesId === invSelectedCategoryId; });
+  }
+
+  // 2. Búsqueda por nombre o SKU
+  if (invSearchTerm) {
+    var term = invSearchTerm.toLowerCase();
+    list = list.filter(function(p) {
+      return (p.name || "").toLowerCase().includes(term) || (p.sku || "").toLowerCase().includes(term);
+    });
+  }
+
+  // 3. Filtro de Semáforo
+  if (invSemaphoreFilter !== "all") {
+    list = list.filter(function(p) {
+      var st = p._sem ? p._sem.status : "inactive";
+      if (invSemaphoreFilter === "buy") return st === "red" || st === "yellow";
+      return st === invSemaphoreFilter;
+    });
+  }
+
+  // 4. Ordenamiento en memoria
+  list.sort(function(a, b) {
+    var dir = invSortOrder === "asc" ? 1 : -1;
+    if (invSortField === "coverage") {
+      var da = a._sem ? a._sem.days : Infinity;
+      var db = b._sem ? b._sem.days : Infinity;
+      if (da !== db) {
+        if (da === Infinity) return 1; // Sin ventas siempre al final
+        if (db === Infinity) return -1;
+        return (da - db) * dir;
+      }
+      // Desempate: si ambos son 0 días, mayor rotación primero
+      var va = a._sem ? a._sem.daily : 0;
+      var vb = b._sem ? b._sem.daily : 0;
+      return vb - va;
+    }
+    if (invSortField === "name") {
+      return (a.name || "").localeCompare(b.name || "") * dir;
+    }
+    if (invSortField === "price") {
+      return ((a.price || 0) - (b.price || 0)) * dir;
+    }
+    if (invSortField === "stock") {
+      return ((a.stock || 0) - (b.stock || 0)) * dir;
+    }
+    var ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    var cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return (ca - cb) * dir;
+  });
+
+  return list;
+}
+
+function updateSemaphoreKPIs() {
+  var box = document.getElementById("invKpiSemaphoreSummary");
+  var lblWin = document.getElementById("invKpiSemWindow");
+  if (lblWin) lblWin.textContent = invSemaphoreDays + "d";
+  if (!invSemaphoreActive) return;
+
+  var cRed = 0, cYellow = 0, cGreen = 0, cStagnant = 0;
+  invFullCatalogCache.forEach(function(p) {
+    if (!p._sem) return;
+    if (p._sem.status === "red") cRed++;
+    else if (p._sem.status === "yellow") cYellow++;
+    else if (p._sem.status === "green") cGreen++;
+    else if (p._sem.status === "stagnant") cStagnant++;
+  });
+
+  box.innerHTML =
+    '<div class="flex flex-wrap gap-1.5">' +
+      '<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[11px]">🔴 ' + cRed + '</span>' +
+      '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[11px]">🟡 ' + cYellow + '</span>' +
+      '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">🟢 ' + cGreen + '</span>' +
+      '<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[11px]">⚪ ' + cStagnant + '</span>' +
+    '</div>';
+}
+
 function resetAndFetchInventory() {
+  if (invSemaphoreActive && invFullCatalogCache.length > 0) {
+    renderInventoryTable();
+    return;
+  }
   allInventoryProducts = [];
   invCurrentPage = 1;
   invHasMore = true;
-  document.getElementById("inventoryTableBody").innerHTML = '<tr><td colspan="10" class="text-center py-8 text-indigo-600 font-medium">Cargando inventario...</td></tr>';
+  document.getElementById("inventoryTableBody").innerHTML = '<tr><td colspan="12" class="text-center py-8 text-indigo-600 font-medium">Cargando inventario...</td></tr>';
   fetchInventoryPage();
 }
 
 async function fetchInventoryPage() {
+  if (invSemaphoreActive && invFullCatalogCache.length > 0) return;
   if (invIsLoading || !invHasMore) return;
   invIsLoading = true;
   document.getElementById("invLoadingText").textContent = "Cargando artículos...";
 
   var url = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes?page=" + invCurrentPage + "&limit=50&sort=" + invSortField + "&order=" + invSortOrder;
 
-  
-    if (invFilterOnlyNoStock) {
+  if (invFilterOnlyNoStock) {
     url += "&quickFilters=lowStock";
   }
-
   if (invSelectedCategoryId) {
     url += "&storeCategoryId=" + encodeURIComponent(invSelectedCategoryId);
   }
   if (invSearchTerm) {
     url += "&search=" + encodeURIComponent(invSearchTerm);
   }
-
 
   try {
     var res = await fetch(url, { headers: getHeaders() });
@@ -387,24 +498,35 @@ async function fetchInventoryPage() {
       invHasMore = (allInventoryProducts.length < invTotalItems) && (newItems.length > 0);
       invCurrentPage++;
       renderInventoryTable();
-      document.getElementById("invLoadingText").textContent = invHasMore ? "Desplázate para cargar más artículos..." : "✅ Final del inventario (" + allInventoryProducts.length + " artículos)";
+      document.getElementById("invLoadingText").textContent = invHasMore
+        ? "Desplázate para cargar más artículos..."
+        : "✅ Final del inventario (" + allInventoryProducts.length + " artículos)";
     }
   } finally { invIsLoading = false; }
 }
 
 function renderInventoryTable() {
   var body = document.getElementById("inventoryTableBody");
-  var filtered = allInventoryProducts;
+  var thCov = document.getElementById("thInvSortCoverage");
+  if (thCov) thCov.classList.toggle("hidden", !invSemaphoreActive);
 
-  document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
+  var sourceForStockCounts = invSemaphoreActive ? invFullCatalogCache : allInventoryProducts;
+  var filtered = invSemaphoreActive ? getSemaphoreFilteredAndSortedItems() : allInventoryProducts;
+
+  if (invSemaphoreActive) {
+    document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + invFullCatalogCache.length + " artículos";
+    document.getElementById("invLoadingText").textContent = "✅ Catálogo completo analizado (" + filtered.length + " resultados)";
+  } else {
+    document.getElementById("invTableCount").textContent = "Mostrando " + filtered.length + " de " + (invTotalItems || allInventoryProducts.length) + " artículos";
+  }
 
   var inStockCount = 0, noStockCount = 0;
-  allInventoryProducts.forEach(function(p) { if ((p.stock || 0) > 0) inStockCount++; else noStockCount++; });
+  sourceForStockCounts.forEach(function(p) { if ((p.stock || 0) > 0) inStockCount++; else noStockCount++; });
   document.getElementById("invKpiInStockCount").textContent = inStockCount + " con stock";
   document.getElementById("invKpiNoStockCount").textContent = noStockCount + " sin stock";
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-slate-400">No se encontraron productos.</td></tr>';
+    body.innerHTML = '<tr><td colspan="12" class="text-center py-8 text-slate-400">No se encontraron productos.</td></tr>';
     return;
   }
 
@@ -441,8 +563,6 @@ function renderInventoryTable() {
       ? '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 font-semibold text-[10px] cursor-pointer transition select-none btn-filter-cat" data-cat-id="' + (prod.storeCategoriesId || '') + '" title="Clic para filtrar por ' + prod.categoryName + '">' + prod.categoryName + '</span>'
       : '<span class="text-slate-300 italic text-[11px]">-</span>';
 
-    
-    // Formatear la fecha de creación si la columna está activa
     var createdCell = "";
     if (invShowCreatedCol) {
       var createdDateStr = "-";
@@ -453,6 +573,30 @@ function renderInventoryTable() {
       createdCell = '<td class="py-2.5 px-3 text-center text-slate-500 font-mono text-[11px] whitespace-nowrap">' + createdDateStr + '</td>';
     }
 
+    var coverageCell = "";
+    if (invSemaphoreActive) {
+      var sem = prod._sem || { status: "inactive", days: Infinity, daily: 0, sold: 0 };
+      var covHtml = "";
+      var dailyStr = sem.daily > 0 ? (sem.daily >= 10 ? sem.daily.toFixed(0) : sem.daily.toFixed(1)) + " u/d" : "";
+      if (sem.status === "red") {
+        var dRed = sem.days === 0 ? "0 d" : (sem.days < 1 ? "<1 d" : sem.days.toFixed(1) + " d");
+        covHtml = '<span class="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-extrabold">🔴 ' + dRed + '</span>' +
+                  '<div class="text-[10px] text-slate-500 font-mono mt-0.5">' + dailyStr + ' (' + sem.sold + 'u)</div>';
+      } else if (sem.status === "yellow") {
+        covHtml = '<span class="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold">🟡 ' + sem.days.toFixed(1) + ' d</span>' +
+                  '<div class="text-[10px] text-slate-500 font-mono mt-0.5">' + dailyStr + ' (' + sem.sold + 'u)</div>';
+      } else if (sem.status === "green") {
+        var dGreen = sem.days > 999 ? ">999 d" : Math.round(sem.days) + " d";
+        covHtml = '<span class="inline-block px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">🟢 ' + dGreen + '</span>' +
+                  '<div class="text-[10px] text-slate-400 font-mono mt-0.5">' + dailyStr + ' (' + sem.sold + 'u)</div>';
+      } else if (sem.status === "stagnant") {
+        covHtml = '<span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[10px]">⚪ Sin ventas</span>';
+      } else {
+        covHtml = '<span class="text-slate-300 text-[10px] font-medium">⚫ Inactivo</span>';
+      }
+      coverageCell = '<td class="py-2.5 px-3 text-center whitespace-nowrap">' + covHtml + '</td>';
+    }
+
     tr.innerHTML = '<td class="py-2.5 px-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
                    '<td class="py-2.5 px-3">' + imgTag + '</td>' +
                    '<td class="py-2.5 px-3 font-medium text-slate-800">' +
@@ -460,10 +604,11 @@ function renderInventoryTable() {
                      (prod.sku ? '<div class="text-[10px] text-slate-400 font-mono">SKU: ' + prod.sku + '</div>' : '') +
                    '</td>' +
                    '<td class="py-2.5 px-3">' + catBadge + '</td>' +
-                   createdCell + // 👈 Celda condicional
+                   createdCell +
                    '<td class="py-2.5 px-3 text-right font-bold text-slate-900">' + currencyFormatter.format(price) + '</td>' +
                    '<td class="py-2.5 px-3 text-right text-slate-600">' + currencyFormatter.format(cost) + '</td>' +
                    '<td class="py-2.5 px-3 text-center">' + stockBadge + '</td>' +
+                   coverageCell +
                    '<td class="py-2.5 px-3 text-right">' + profitCell + '</td>' +
                    '<td class="py-2.5 px-3 text-right">' + marginBadge + '</td>' +
                    '<td class="py-2.5 px-3 text-right font-semibold text-slate-700">' + currencyFormatter.format(totalStockValue) + '</td>';
@@ -478,7 +623,7 @@ document.getElementById("invSearchInput").oninput = function(e) {
   invSearchTimeout = setTimeout(function() {
     invSearchTerm = term;
     resetAndFetchInventory();
-  }, 400);
+  }, invSemaphoreActive ? 150 : 400);
 };
 
 // Detectores de Scroll Infinito naturales con anticipación de 300px
@@ -978,7 +1123,13 @@ new IntersectionObserver(function(entries) {
 
 function refreshAll() {
   if (activeTab === "inventory") {
-    resetAndFetchInventory();
+    invFullCatalogCache = [];
+    invSalesVelocityCache = {};
+    if (invSemaphoreActive) {
+      runInventorySemaphore(true);
+    } else {
+      resetAndFetchInventory();
+    }
   } else {
     fetchExecutiveSummary();
     if (activeTab === "clients") fetchClientsData();
@@ -1062,15 +1213,21 @@ function handleInvSort(field) {
     invSortOrder = invSortOrder === "desc" ? "asc" : "desc";
   } else {
     invSortField = field;
-    invSortOrder = (field === "name") ? "asc" : "desc"; // Alfabético A-Z por defecto, números de mayor a menor
+    invSortOrder = (field === "name" || field === "coverage") ? "asc" : "desc";
   }
   updateInvSortIcons();
   resetAndFetchInventory();
 }
 
 function updateInvSortIcons() {
-  var iconMap = { created_at: "iconInvSortCreated", name: "iconInvSortName", price: "iconInvSortPrice", stock: "iconInvSortStock" };
-  ["created_at", "name", "price", "stock"].forEach(function(f) {
+  var iconMap = {
+    created_at: "iconInvSortCreated",
+    name: "iconInvSortName",
+    price: "iconInvSortPrice",
+    stock: "iconInvSortStock",
+    coverage: "iconInvSortCoverage"
+  };
+  ["created_at", "name", "price", "stock", "coverage"].forEach(function(f) {
     var iconEl = document.getElementById(iconMap[f]);
     if (!iconEl) return;
     if (f === invSortField) {
@@ -1083,10 +1240,186 @@ function updateInvSortIcons() {
   });
 }
 
+// ==================== SEMÁFORO DE REABASTECIMIENTO (INVENTARIO) ====================
+function formatLocalDateYMD(d) {
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+
+async function ensureFullInventoryCatalog(onStatus) {
+  if (invFullCatalogCache.length > 0) return invFullCatalogCache;
+
+  var baseUrl = "https://web-api-gateway.treinta.co/manager/" + storeId + "/products/summary-with-taxes";
+  if (onStatus) onStatus("Cargando catálogo (1/...)");
+
+  var res1 = await fetch(baseUrl + "?page=1&limit=100&sort=created_at&order=desc", { headers: getHeaders() });
+  if (!res1.ok) throw new Error("Error cargando inventario: " + res1.status);
+  var d1 = await res1.json();
+  var items = (d1.data || []).slice();
+  var total = d1.total || items.length;
+  var totalPages = Math.ceil(total / 100);
+
+  for (var pg = 2; pg <= totalPages; pg += 3) {
+    var batchPages = [];
+    for (var b = pg; b < pg + 3 && b <= totalPages; b++) batchPages.push(b);
+    if (onStatus) onStatus("Catálogo (" + Math.min(pg + 2, totalPages) + "/" + totalPages + ")...");
+
+    var results = await Promise.all(batchPages.map(function(pNum) {
+      return fetch(baseUrl + "?page=" + pNum + "&limit=100&sort=created_at&order=desc", { headers: getHeaders() })
+        .then(function(r) { return r.ok ? r.json() : { data: [] }; });
+    }));
+    results.forEach(function(rData) {
+      items = items.concat(rData.data || []);
+    });
+    await new Promise(function(r) { setTimeout(r, 120); });
+  }
+
+  // Aprovechar la carga para refrescar el mapa de categorías de Ventas
+  items.forEach(function(p) {
+    if (p.id) productCategoryMap[p.id] = p.categoryName || "SIN CATEGORIA";
+  });
+  try { localStorage.setItem("t_prod_cat_map", JSON.stringify(productCategoryMap)); } catch(e) {}
+
+  invFullCatalogCache = items;
+  invTotalItems = total;
+  return invFullCatalogCache;
+}
+
+async function ensureSalesVelocityForDays(days, onStatus) {
+  if (invSalesVelocityCache[days]) return invSalesVelocityCache[days];
+
+  var now = new Date();
+  var endLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var startLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+  var tz = encodeURIComponent("America/Buenos_Aires");
+  var q = "timeUnit=custom&startDate=" + getArgentinaStartISO(formatLocalDateYMD(startLocal)) +
+          "&endDate=" + getArgentinaEndISO(formatLocalDateYMD(endLocal)) + "&timeZone=" + tz;
+
+  var salesMap = {};
+  var cursor = null;
+  var pageCount = 0;
+
+  while (true) {
+    pageCount++;
+    if (onStatus) onStatus("Ventas " + days + "d (lote " + pageCount + ")...");
+    var url = "https://core-api-gateway.treinta.co/v2/stores/" + storeId + "/stats/products/list?sort=units&order=desc&limit=100&" + q;
+    if (cursor) url += "&cursor=" + encodeURIComponent(cursor);
+
+    var res = await fetchWithRetry429(url);
+    if (!res || !res.ok) break;
+    var data = await res.json();
+    (data.items || []).forEach(function(it) {
+      var sold = Number(it.totalSold) || 0;
+      if (it.productId && sold > 0) {
+        salesMap[it.productId] = (salesMap[it.productId] || 0) + sold;
+      }
+    });
+    cursor = data.nextCursor || null;
+    if (!cursor || (data.items || []).length === 0) break;
+    await new Promise(function(r) { setTimeout(r, 150); });
+  }
+
+  invSalesVelocityCache[days] = salesMap;
+  return salesMap;
+}
+
+function syncSemaphoreWindowButtons() {
+  document.querySelectorAll(".btn-sem-window").forEach(function(btn) {
+    if (Number(btn.dataset.days) === invSemaphoreDays) {
+      btn.className = "btn-sem-window px-2 py-0.5 rounded text-[11px] font-bold bg-white text-indigo-600 shadow-sm transition";
+    } else {
+      btn.className = "btn-sem-window px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition";
+    }
+  });
+}
+
+function syncSemaphoreFilterButtons() {
+  document.querySelectorAll(".btn-sem-filter").forEach(function(btn) {
+    var f = btn.dataset.filter;
+    var isAct = f === invSemaphoreFilter;
+    if (f === "buy") {
+      btn.className = "btn-sem-filter px-2.5 py-1 rounded-lg font-bold transition " +
+        (isAct ? "bg-rose-600 text-white shadow-sm ring-2 ring-rose-300" : "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100");
+    } else if (f === "all") {
+      btn.className = "btn-sem-filter px-2 py-1 rounded-lg font-bold transition " +
+        (isAct ? "bg-amber-400 text-slate-900 shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200");
+    } else {
+      btn.className = "btn-sem-filter px-2 py-1 rounded-lg font-semibold transition " +
+        (isAct ? "bg-indigo-600 text-white font-bold shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200");
+    }
+  });
+}
+
+async function runInventorySemaphore(forceRefresh) {
+  if (invSemaphoreLoading) return;
+  invSemaphoreLoading = true;
+  var btn = document.getElementById("btnCalcSemaphore");
+  var lbl = document.getElementById("lblBtnCalcSem");
+  btn.disabled = true;
+
+  try {
+    if (forceRefresh) {
+      invFullCatalogCache = [];
+      delete invSalesVelocityCache[invSemaphoreDays];
+    }
+
+    await ensureFullInventoryCatalog(function(txt) { lbl.textContent = txt; });
+    await ensureSalesVelocityForDays(invSemaphoreDays, function(txt) { lbl.textContent = txt; });
+
+    invFullCatalogCache.forEach(function(prod) {
+      prod._sem = computeProductSemaphore(prod);
+    });
+
+    invSemaphoreActive = true;
+    document.getElementById("invSemaphoreFilters").classList.remove("hidden");
+    lbl.textContent = "Recalcular (" + invSemaphoreDays + "d)";
+    btn.className = "px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-xs shadow-xs transition flex items-center gap-1.5";
+
+    updateSemaphoreKPIs();
+    syncSemaphoreFilterButtons();
+    renderInventoryTable();
+  } catch (err) {
+    console.error("Error semáforo inventario:", err);
+    alert("Error al calcular el semáforo: " + err.message);
+    lbl.textContent = "Calcular Semáforo";
+  } finally {
+    btn.disabled = false;
+    invSemaphoreLoading = false;
+  }
+}
+
+document.getElementById("btnCalcSemaphore").onclick = function() {
+  runInventorySemaphore(invSemaphoreActive);
+};
+
+document.querySelectorAll(".btn-sem-window").forEach(function(btn) {
+  btn.onclick = function() {
+    var d = Number(btn.dataset.days);
+    if (d === invSemaphoreDays) return;
+    invSemaphoreDays = d;
+    syncSemaphoreWindowButtons();
+    document.getElementById("invKpiSemWindow").textContent = invSemaphoreDays + "d";
+    if (invSemaphoreActive) runInventorySemaphore(false);
+  };
+});
+
+document.querySelectorAll(".btn-sem-filter").forEach(function(btn) {
+  btn.onclick = function() {
+    invSemaphoreFilter = btn.dataset.filter;
+    if (invSemaphoreFilter === "buy" || invSemaphoreFilter === "red" || invSemaphoreFilter === "yellow") {
+      invSortField = "coverage";
+      invSortOrder = "asc";
+      updateInvSortIcons();
+    }
+    syncSemaphoreFilterButtons();
+    renderInventoryTable();
+  };
+});
+
 document.getElementById("thInvSortCreated").onclick = function() { handleInvSort("created_at"); };
 document.getElementById("thInvSortName").onclick = function() { handleInvSort("name"); };
 document.getElementById("thInvSortPrice").onclick = function() { handleInvSort("price"); };
 document.getElementById("thInvSortStock").onclick = function() { handleInvSort("stock"); };
+document.getElementById("thInvSortCoverage").onclick = function() { handleInvSort("coverage"); };
 
 
 document.getElementById("btnRefresh").onclick = refreshAll;
