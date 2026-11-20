@@ -6,6 +6,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- INJECT_SESSION -->
+
+<style>
+    .thin-scrollbar::-webkit-scrollbar { height: 5px; width: 6px; }
+    .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .thin-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
@@ -13,6 +21,9 @@
   <div id="globalImgPreview" class="fixed hidden z-[9999999] pointer-events-none bg-white p-1.5 rounded-2xl shadow-2xl border border-slate-200 w-40 h-40 items-center justify-center transition-opacity">
     <img id="globalImgPreviewSrc" src="" class="w-full h-full object-contain rounded-xl" alt="Preview">
   </div>
+
+  <!-- TOOLTIP FLOTANTE GLOBAL -->
+  <div id="globalRichTooltip" class="fixed hidden z-[9999999] pointer-events-none bg-slate-900/95 text-white text-[11px] leading-relaxed px-3 py-2 rounded-xl shadow-2xl border border-slate-700 max-w-xs whitespace-pre-line"></div>
 
   <!-- BARRA DE NAVEGACIÓN -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -253,23 +264,32 @@
             <span id="invKpiNoStockCount" class="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">0 sin stock</span>
           </div>
         </div>
-        <!-- KPI Semáforo -->
+        <!-- KPI Rotación de Stock -->
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs uppercase text-slate-400 font-bold">Semáforo Rotación (<span id="invKpiSemWindow">30d</span>)</p>
-          <div id="invKpiSemaphoreSummary" class="mt-1.5 text-xs text-slate-400 font-medium">
-            Pulsa <strong class="text-indigo-600">Calcular</strong> para analizar
+          <p class="text-xs uppercase text-slate-400 font-bold flex items-center gap-1">
+            <span>Rotación (<span id="invKpiSemWindow">30d</span>)</span>
+            <span class="text-indigo-500 cursor-help text-xs normal-case" data-tip="Clasifica el catálogo según los días estimados de duración del stock actual (Stock ÷ Venta diaria del período).&#10;&#10;🔴 Crítico: menos de 7 días (o stock 0 con ventas)&#10;🟡 Alerta: entre 7 y 15 días&#10;🟢 Ok: más de 15 días&#10;⚪ Sin rotación: con stock pero 0 ventas&#10;⚫ Inactivos: sin stock ni ventas">ⓘ</span>
+          </p>
+          <div id="invKpiSemaphoreSummary" class="mt-1.5 text-[11px] text-slate-500 leading-snug">
+            Mide cuántos días dura tu stock según ventas reales. Actívalo desde <strong class="text-indigo-600">🚦 Semáforo</strong>.
           </div>
         </div>
       </section>
 
-      <section class="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <!-- BARRA SUPERIOR, SEMÁFORO Y PÍLDORAS STICKY -->
-        <div class="sticky top-[53px] z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 rounded-t-xl shadow-xs space-y-2 pb-2">
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- BARRA DE HERRAMIENTAS LIMPIA -->
+        <div class="bg-white border-b border-slate-200 space-y-2.5 pb-2.5">
+          <!-- Fila 1: Buscador y Controles Principales -->
           <div class="p-4 pb-0 flex flex-wrap justify-between items-center gap-3">
             <div class="w-full sm:w-80">
               <input type="text" id="invSearchInput" placeholder="🔍 Buscar por nombre o SKU..." class="w-full border rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
             <div class="flex flex-wrap items-center gap-2">
+              <button id="btnToggleSemaphorePanel" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1.5 select-none">
+                <span>🚦</span>
+                <span id="lblToggleSemPanel">Semáforo</span>
+                <span id="iconToggleSemPanel" class="text-[9px] text-slate-400">▼</span>
+              </button>
               <button id="btnToggleCreatedCol" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1 select-none" title="Mostrar u ocultar columna de fecha de alta">
                 <span>🕒</span> Fecha Alta
               </button>
@@ -283,13 +303,16 @@
             </div>
           </div>
 
-          <!-- BARRA DEL SEMÁFORO DE REABASTECIMIENTO -->
-          <div class="px-4 flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+          <!-- Fila Desplegable: Panel del Semáforo (arranca plegado) -->
+          <div id="invSemaphoreDrawer" class="hidden mx-4 p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">Ventana:</span>
-              <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 select-none flex items-center gap-1">
+                Ventana
+                <span class="text-indigo-500 cursor-help text-xs normal-case" data-tip="Cantidad de días hacia atrás usados para calcular el promedio de unidades vendidas por día (Total vendido ÷ Días).&#10;&#10;• 15d–30d: detecta quiebres recientes rápido&#10;• 45d–60d: suaviza picos de ventas mayoristas esporádicas">ⓘ</span>:
+              </span>
+              <div class="inline-flex items-center bg-white rounded-lg p-0.5 border border-slate-200 text-xs shadow-2xs">
                 <button type="button" class="btn-sem-window px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-days="15">15d</button>
-                <button type="button" class="btn-sem-window px-2 py-0.5 rounded text-[11px] font-bold bg-white text-indigo-600 shadow-sm transition" data-days="30">30d</button>
+                <button type="button" class="btn-sem-window px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-600 text-white shadow-xs transition" data-days="30">30d</button>
                 <button type="button" class="btn-sem-window px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-days="45">45d</button>
                 <button type="button" class="btn-sem-window px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 transition" data-days="60">60d</button>
               </div>
@@ -298,59 +321,62 @@
               </button>
             </div>
 
-            <!-- Filtros Rápidos del Semáforo (habilitados al calcular) -->
             <div id="invSemaphoreFilters" class="hidden flex flex-wrap items-center gap-1.5 text-xs">
-              <button type="button" class="btn-sem-filter px-2.5 py-1 rounded-lg font-bold bg-rose-600 text-white shadow-xs transition" data-filter="buy">🛒 Comprar (🔴+🟡)</button>
-              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-filter="red">🔴 &lt;7d</button>
-              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-filter="yellow">🟡 7-15d</button>
-              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-filter="green">🟢 &gt;15d</button>
-              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-filter="stagnant">⚪ Sin rotación</button>
-              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-xs transition" data-filter="all">Todos</button>
+              <button type="button" class="btn-sem-filter px-2.5 py-1 rounded-lg font-bold transition" data-filter="buy" data-tip="Lista prioritaria de reposición: muestra artículos 🔴 (<7d) y 🟡 (7-15d) con demanda real, ordenados del más urgente al menos urgente.">🛒 Comprar (🔴+🟡)</button>
+              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold transition" data-filter="red" data-tip="Crítico: alcanza para menos de 7 días al ritmo actual de ventas (incluye stock 0 con demanda reciente).">🔴 &lt;7d</button>
+              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold transition" data-filter="yellow" data-tip="Alerta: stock cubre entre 7 y 15 días de venta.">🟡 7-15d</button>
+              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold transition" data-filter="green" data-tip="Saludable: stock cubre más de 15 días al ritmo actual.">🟢 &gt;15d</button>
+              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-semibold transition" data-filter="stagnant" data-tip="Stock inmovilizado: artículos que tienen stock disponible (>0) pero no registraron ventas en la ventana elegida.">⚪ Sin rotación</button>
+              <button type="button" class="btn-sem-filter px-2 py-1 rounded-lg font-bold transition" data-filter="all" data-tip="Quita el filtro del semáforo y muestra todo el catálogo.">Todos</button>
             </div>
           </div>
 
-          <div class="px-4 overflow-x-auto">
-            <div id="invCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs pb-1">
-              <button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
-              <button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Sin stock</button>
+          <!-- Fila Separada: Categorías con línea divisoria -->
+          <div class="px-4 pt-2 border-t border-slate-200 flex items-center gap-2">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none flex-shrink-0">Categorías:</span>
+            <div class="overflow-x-auto thin-scrollbar flex-1 pb-1">
+              <div id="invCategoryPillsContainer" class="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                <button id="pillCatAll" class="px-3 py-1 rounded-lg font-bold bg-amber-400 text-slate-900 shadow-sm transition">Ver todos</button>
+                <button id="pillCatNoStock" class="px-3 py-1 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Sin stock</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- TABLA CON SCROLL NATURAL -->
-        <div class="overflow-x-auto">
+        <!-- CONTENEDOR SCROLLABLE PROPIO PARA FIJAR ENCABEZADOS (THEAD STICKY) -->
+        <div id="invTableScrollWrap" class="overflow-auto max-h-[70vh] thin-scrollbar">
           <table class="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr class="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] border-b select-none">
-                <th class="py-3 px-3">#</th>
-                <th class="py-3 px-3">Foto</th>
-                <th id="thInvSortName" class="py-3 px-3 cursor-pointer hover:bg-slate-100 transition" title="Ordenar por nombre">
+            <thead class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0]">
+              <tr class="text-slate-500 uppercase font-semibold text-[11px] select-none">
+                <th class="py-3 px-3 bg-slate-50">#</th>
+                <th class="py-3 px-3 bg-slate-50">Foto</th>
+                <th id="thInvSortName" class="py-3 px-3 bg-slate-50 cursor-pointer hover:bg-slate-100 transition" title="Ordenar por nombre">
                   Producto / SKU <span id="iconInvSortName" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                <th class="py-3 px-3">Categoría</th>
-                <th id="thInvSortCreated" class="hidden py-3 px-3 cursor-pointer hover:bg-slate-100 transition text-center" title="Ordenar por fecha de alta">
+                <th class="py-3 px-3 bg-slate-50">Categoría</th>
+                <th id="thInvSortCreated" class="hidden py-3 px-3 bg-slate-50 cursor-pointer hover:bg-slate-100 transition text-center" title="Ordenar por fecha de alta">
                   Fecha Alta <span id="iconInvSortCreated" class="text-indigo-600 ml-0.5 font-bold">↓</span>
                 </th>
-                <th id="thInvSortPrice" class="py-3 px-3 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
+                <th id="thInvSortPrice" class="py-3 px-3 bg-slate-50 text-right cursor-pointer hover:bg-slate-100 transition" title="Ordenar por precio">
                   Precio <span id="iconInvSortPrice" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                <th class="py-3 px-3 text-right">Costo</th>
-                <th id="thInvSortStock" class="py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por stock">
+                <th class="py-3 px-3 bg-slate-50 text-right">Costo</th>
+                <th id="thInvSortStock" class="py-3 px-3 bg-slate-50 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por stock">
                   Stock <span id="iconInvSortStock" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                <th id="thInvSortCoverage" class="hidden py-3 px-3 text-center cursor-pointer hover:bg-slate-100 transition" title="Ordenar por días de cobertura">
-                  Cobertura <span id="iconInvSortCoverage" class="text-slate-300 ml-0.5 font-bold">↕</span>
+                <th id="thInvSortCoverage" class="hidden py-3 px-3 bg-slate-50 text-center cursor-pointer hover:bg-slate-100 transition">
+                  Cobertura <span class="text-indigo-500 cursor-help ml-0.5" data-tip="Días estimados hasta agotar stock (Stock ÷ Venta diaria).&#10;&#10;Ejemplo: '0 d' en rojo y '24 u/d (1433u)' significa que vendiste 1.433 unidades en la ventana (24 por día) y hoy tienes stock 0 o negativo.&#10;&#10;🔴 <7d · 🟡 7-15d · 🟢 >15d · ⚪ Sin ventas">ⓘ</span> <span id="iconInvSortCoverage" class="text-slate-300 ml-0.5 font-bold">↕</span>
                 </th>
-                <th class="py-3 px-3 text-right">Ganancia</th>
-                <th class="py-3 px-4 text-right">Margen</th>
-                <th class="py-3 px-3 text-right">Total Valor</th>
+                <th class="py-3 px-3 bg-slate-50 text-right">Ganancia</th>
+                <th class="py-3 px-4 bg-slate-50 text-right">Margen</th>
+                <th class="py-3 px-3 bg-slate-50 text-right">Total Valor</th>
               </tr>
             </thead>
             <tbody id="inventoryTableBody" class="divide-y divide-slate-100"></tbody>
           </table>
-        </div>
-        <div id="invInfiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500">
-          <span id="invLoadingText">Desplázate para cargar más artículos...</span>
+          <div id="invInfiniteScrollTrigger" class="py-4 text-center bg-slate-50 text-xs font-semibold text-slate-500 border-t border-slate-100">
+            <span id="invLoadingText">Desplázate para cargar más artículos...</span>
+          </div>
         </div>
       </section>
     </div>
