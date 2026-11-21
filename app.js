@@ -1174,6 +1174,66 @@ new IntersectionObserver(function(entries) {
   }
 }, { root: null, rootMargin: "300px", threshold: 0 }).observe(document.getElementById("infiniteScrollTrigger"));
 
+// Navegación por teclado predeterminada sobre la tabla de Inventario
+document.addEventListener("keydown", function(e) {
+  if (activeTab !== "inventory") return;
+
+  // No interferir si hay algún modal abierto
+  var anyModalOpen = !document.getElementById("modalDetail").classList.contains("hidden") ||
+                     !document.getElementById("modalTxDetail").classList.contains("hidden") ||
+                     !document.getElementById("modalPrintStudio").classList.contains("hidden");
+  if (anyModalOpen) return;
+
+  // No interferir si el foco está en un input/buscador
+  var activeEl = document.activeElement;
+  var tag = activeEl ? activeEl.tagName : "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (activeEl && activeEl.isContentEditable)) return;
+
+  // Respetar atajos del navegador (ej. Alt+Flecha atrás, Ctrl+R, etc., salvo Ctrl+Home/End)
+  if (e.altKey || e.metaKey) return;
+  if (e.ctrlKey && e.key !== "Home" && e.key !== "End") return;
+
+  var wrap = document.getElementById("invTableScrollWrap");
+  if (!wrap) return;
+
+  var stepRow = 48;
+  var stepPage = Math.max(120, wrap.clientHeight - 56); // Descuenta altura del thead fijo
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      wrap.scrollTop += stepRow;
+      break;
+    case "ArrowUp":
+      e.preventDefault();
+      wrap.scrollTop -= stepRow;
+      break;
+    case "ArrowRight":
+      e.preventDefault();
+      wrap.scrollLeft += 60;
+      break;
+    case "ArrowLeft":
+      e.preventDefault();
+      wrap.scrollLeft -= 60;
+      break;
+    case "PageDown":
+      e.preventDefault();
+      wrap.scrollTop += stepPage;
+      break;
+    case "PageUp":
+      e.preventDefault();
+      wrap.scrollTop -= stepPage;
+      break;
+    case "Home":
+      e.preventDefault();
+      wrap.scrollTop = 0;
+      break;
+    case "End":
+      e.preventDefault();
+      wrap.scrollTop = wrap.scrollHeight;
+      break;
+  }
+});
 
 
 function refreshAll() {
@@ -1510,7 +1570,7 @@ document.getElementById("thInvSortCreated").onclick = function() { handleInvSort
 document.getElementById("thInvSortName").onclick = function() { handleInvSort("name"); };
 document.getElementById("thInvSortPrice").onclick = function() { handleInvSort("price"); };
 document.getElementById("thInvSortStock").onclick = function() { handleInvSort("stock"); };
-document.getElementById("thInvSortCoverage").onclick = function() { handleInvSort("coverage"); if (e.target.closest("[data-tip]")) return; };
+document.getElementById("thInvSortCoverage").onclick = function(e) { if (e.target.closest("[data-tip]")) return; handleInvSort("coverage"); };
 
 
 document.getElementById("btnRefresh").onclick = refreshAll;
