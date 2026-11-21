@@ -151,10 +151,26 @@
     <!-- ==================== VISTA 1: CLIENTES ==================== -->
     <div id="viewClients" class="space-y-6">
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Total Facturado</p><h3 id="kpiTotalSales" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3></div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Clientes con Compra</p><h3 id="kpiActiveClients" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Operaciones</p><h3 id="kpiTotalOrders" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3></div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs uppercase text-slate-400 font-bold">Ticket Promedio</p><h3 id="kpiAvgTicket" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3></div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Total Facturado</p>
+          <h3 id="kpiTotalSales" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3>
+          <p id="kpiClientsTotalSub" class="text-[11px] text-slate-500 mt-1">-</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Clientes con Compra</p>
+          <h3 id="kpiActiveClients" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3>
+          <p class="text-[11px] text-slate-500 mt-1">Clientes registrados activos</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Operaciones (Clientes)</p>
+          <h3 id="kpiTotalOrders" class="text-2xl font-extrabold text-slate-900 mt-1">0</h3>
+          <p class="text-[11px] text-slate-500 mt-1">Ventas con cliente asignado</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs uppercase text-slate-400 font-bold">Ticket Prom. (Clientes)</p>
+          <h3 id="kpiAvgTicket" class="text-2xl font-extrabold text-slate-900 mt-1">$ 0</h3>
+          <p class="text-[11px] text-slate-500 mt-1">Promedio por op. identificada</p>
+        </div>
       </section>
       <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h2 class="text-sm font-bold text-slate-900 mb-4">Top 10 Clientes</h2><div class="h-80 w-full"><canvas id="topClientsChart"></canvas></div></section>
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm">

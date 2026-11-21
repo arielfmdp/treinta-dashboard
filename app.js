@@ -848,13 +848,30 @@ async function fetchExecutiveSummary() {
   } catch(err) { console.error("Error ejecutivo:", err); }
 }
 
+function updateTrendBadge(elId, trendPct) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var tr = Number(trendPct) || 0;
+
+  if (tr < 0) {
+    el.textContent = "↓ " + tr + "% vs anterior";
+    el.className = "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200";
+  } else if (tr > 0) {
+    el.textContent = "↑ +" + tr + "% vs anterior";
+    el.className = "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
+  } else {
+    el.textContent = "= 0% vs anterior";
+    el.className = "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200";
+  }
+}
+
 function renderExecutiveProfit(data) {
   document.getElementById("execProfitValue").textContent = currencyFormatter.format(data.totalProfit || 0);
   document.getElementById("execProfitVendiste").textContent = currencyFormatter.format(data.totalSales || 0);
   document.getElementById("execProfitCosto").textContent = currencyFormatter.format(data.totalCost || 0);
   document.getElementById("execProfitMargen").textContent = (data.marginPercentage || 0).toFixed(2) + "%";
   var tr = data.trendPercentage || 0;
-  document.getElementById("execProfitTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
+  updateTrendBadge("execProfitTrend", tr);
 
   profitPeriodsCache = data.periods || [];
   var labels = profitPeriodsCache.map(function(p) {
@@ -896,7 +913,7 @@ function renderExecutiveSales(data) {
   document.getElementById("execSalesTotalUnits").textContent = numberFormatter.format(data.totalSold || 0);
   document.getElementById("execSalesAvgTicket").textContent = currencyFormatter.format(data.averageBySale || 0);
   var tr = data.trendPercentage || 0;
-  document.getElementById("execSalesTrend").textContent = (tr >= 0 ? "↑ +" : "↓ ") + tr + "% vs anterior";
+  updateTrendBadge("execSalesTrend", tr);
 
   salesPeriodsCache = data.periods || [];
   var labels = salesPeriodsCache.map(function(p) {
@@ -941,21 +958,33 @@ async function fetchClientsData() {
       var d = await res.json();
       allClients = (d.items || []).filter(function(i) { return (i.salesAmount || i.amount) > 0; });
       allClients.sort(function(a, b) { return (b.salesAmount || b.amount) - (a.salesAmount || a.amount); });
-      renderClientsKPIs(allClients);
+      renderClientsKPIs(allClients, d.totalAmount);
       renderClientsChart(allClients.slice(0, 10));
       renderClientsTable(allClients);
     }
   } catch(err) { console.error("Error clientes:", err); }
 }
 
-function renderClientsKPIs(items) {
-  var t = 0, c = 0;
-  items.forEach(function(i) { t += (i.salesAmount || i.amount || 0); c += (i.salesCount || 0); });
-  document.getElementById("kpiTotalSales").textContent = currencyFormatter.format(t);
+function renderClientsKPIs(items, officialTotalAmount) {
+  var clientsSum = 0, c = 0;
+  items.forEach(function(i) { clientsSum += (i.salesAmount || i.amount || 0); c += (i.salesCount || 0); });
+
+  var totalFacturado = (officialTotalAmount != null && officialTotalAmount > 0) ? officialTotalAmount : clientsSum;
+  var unassigned = Math.max(0, totalFacturado - clientsSum);
+
+  document.getElementById("kpiTotalSales").textContent = currencyFormatter.format(totalFacturado);
+  var subEl = document.getElementById("kpiClientsTotalSub");
+  if (subEl) {
+    subEl.textContent = unassigned > 1
+      ? "En clientes: " + currencyFormatter.format(clientsSum) + " · S/cliente: " + currencyFormatter.format(unassigned)
+      : "100% en clientes registrados";
+  }
+
   document.getElementById("kpiActiveClients").textContent = numberFormatter.format(items.length);
   document.getElementById("kpiTotalOrders").textContent = numberFormatter.format(c);
-  document.getElementById("kpiAvgTicket").textContent = currencyFormatter.format(c > 0 ? t / c : 0);
+  document.getElementById("kpiAvgTicket").textContent = currencyFormatter.format(c > 0 ? clientsSum / c : 0);
 }
+
 
 function renderClientsChart(items) {
   var ctx = document.getElementById("topClientsChart").getContext("2d");
